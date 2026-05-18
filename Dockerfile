@@ -29,7 +29,7 @@ WORKDIR /app
 RUN corepack enable
 
 # Copia somente manifests para aproveitar o cache de camadas.
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml ./
 
 # `--frozen-lockfile` garante reprodutibilidade: falha se o lockfile divergir.
 RUN pnpm install --frozen-lockfile
@@ -100,10 +100,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static     ./.next/static
 #    pelo volume do docker-compose em runtime).
 COPY --from=builder --chown=nextjs:nodejs /app/public           ./public
 
-# 5) Lockfile + workspace para que `pnpm` em runtime use exatamente as mesmas
+# 5) Lockfile para que `pnpm` em runtime use exatamente as mesmas
 #    versões resolvidas no estágio deps.
 COPY --from=builder --chown=nextjs:nodejs /app/pnpm-lock.yaml   ./pnpm-lock.yaml
-COPY --from=builder --chown=nextjs:nodejs /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
 # 6) Drizzle: schema, migrate.ts, seed.ts e migrations geradas.
 #    A pasta de migrations vive em `src/db/migrations` (per drizzle.config.ts,
