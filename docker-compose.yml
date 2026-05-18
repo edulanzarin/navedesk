@@ -94,6 +94,12 @@ services:
       # Auth.js v5
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_URL: ${AUTH_URL}
+      # Quando o app é servido por HTTP em LAN (sem TLS), os cookies
+      # `__Secure-*` são descartados pelo navegador e a sessão entra em
+      # loop. Setar `AUTH_INSECURE_COOKIES=true` no `.env` desativa o
+      # `secure: true` e remove o prefixo. Para HTTPS válido, omita ou
+      # deixe `false` para manter cookies seguros.
+      AUTH_INSECURE_COOKIES: ${AUTH_INSECURE_COOKIES:-false}
       # Upload local — `UPLOAD_DIR` deve apontar para o ponto de montagem
       # do volume `uploads` para que arquivos persistam entre subidas.
       UPLOAD_DIR: ${UPLOAD_DIR}

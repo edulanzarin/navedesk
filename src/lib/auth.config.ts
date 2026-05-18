@@ -19,6 +19,23 @@ import type { Role } from "@/types/domain";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+/**
+ * Quando o app roda em produção mas é servido por HTTP puro (típico de
+ * deploy interno em rede LAN sem certificado TLS), os cookies com
+ * prefixo `__Secure-` e flag `secure: true` são silenciosamente
+ * descartados pelo navegador, fazendo com que o login "funcione" mas
+ * a sessão não seja persistida — usuário fica em loop de redirect.
+ *
+ * Setar `AUTH_INSECURE_COOKIES=true` no `.env` desativa o `secure` e
+ * usa o nome de cookie sem prefixo, permitindo HTTP em LAN. Em deploy
+ * com HTTPS válido, deixe a variável ausente para manter o cookie
+ * seguro.
+ */
+const useInsecureCookies =
+    process.env.AUTH_INSECURE_COOKIES === "true";
+
+const cookieIsSecure = isProduction && !useInsecureCookies;
+
 export default {
     session: { strategy: "jwt" },
     pages: { signIn: "/login" },
@@ -101,14 +118,14 @@ export default {
     },
     cookies: {
         sessionToken: {
-            name: isProduction
+            name: cookieIsSecure
                 ? "__Secure-next-auth.session-token"
                 : "next-auth.session-token",
             options: {
                 httpOnly: true,
                 sameSite: "lax",
                 path: "/",
-                secure: isProduction,
+                secure: cookieIsSecure,
             },
         },
     },
