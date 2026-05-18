@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Badge > snapshot de tom green com dot 1`] = `
+<span
+  class="inline-flex items-center gap-1.5 rounded-[--r-pill] px-2.5 py-0.5 text-xs font-medium bg-[--green-soft] text-[--green]"
+>
+  <span
+    aria-hidden="true"
+    class="inline-block h-1.5 w-1.5 rounded-full bg-current"
+  />
+  Resolvido
+</span>
+`;

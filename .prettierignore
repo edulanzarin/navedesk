@@ -1,0 +1,36 @@
+# Build outputs
+.next
+out
+dist
+build
+
+# Dependencies
+node_modules
+
+# Coverage and reports
+coverage
+playwright-report
+test-results
+
+# Static / generated assets
+public
+src/db/migrations
+
+# Lockfiles
+*.lock
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Reference mockups (preserve as-is)
+.example
+
+# Misc
+next-env.d.ts
+tsconfig.tsbuildinfo
+.kiro

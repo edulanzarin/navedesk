@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Button > snapshot de variantes principais (primary md) 1`] = `
+<button
+  class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[--r-3] font-medium tracking-tight select-none transition-colors duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-[--accent] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg] disabled:pointer-events-none disabled:opacity-50 [&_svg]:shrink-0 [&_svg]:size-4 bg-[--accent] text-white hover:bg-[--accent-2] h-10 px-4 text-sm"
+  type="button"
+>
+  Confirmar
+</button>
+`;

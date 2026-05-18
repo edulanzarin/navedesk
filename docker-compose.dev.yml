@@ -1,0 +1,75 @@
+# =============================================================================
+# NaveDesk — docker-compose.dev.yml (override de desenvolvimento)
+#
+# Aplicado em conjunto com `docker-compose.yml` para um ciclo de
+# desenvolvimento rápido com hot-reload do Next.js:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Em relação ao base (`docker-compose.yml`), este override:
+#   - troca o build alvo do `app` para uma imagem Node.js + pnpm sem build
+#     standalone (mais rápida para iterar);
+#   - faz bind mount do código-fonte do host em `/app`, mantendo
+#     `node_modules` e `.next` em volumes anônimos para isolar artefatos
+#     gerados dentro do container;
+#   - executa `pnpm db:migrate` (idempotente) seguido de `pnpm dev` para
+#     habilitar HMR via Next.js dev server;
+#   - mantém o serviço `db` exatamente como o base, com seu healthcheck.
+#
+# Variáveis continuam vindas do `.env` (mesmas do compose base).
+#
+# Validates:
+#   R18.1 — Bootstrap funcional após `docker compose ... up`.
+#   R18.3 — Volumes `pgdata` e `uploads` continuam preservando estado.
+#   R17.3 — `pnpm db:migrate` é executado antes de subir o dev server.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # db — herda integralmente do base (Postgres 16 + healthcheck pg_isready).
+  # Não há necessidade de redefinir nada aqui.
+  # ---------------------------------------------------------------------------
+
+  # ---------------------------------------------------------------------------
+  # app — modo desenvolvimento
+  #
+  # Em vez de usar a imagem standalone do Dockerfile, este override roda o
+  # `pnpm dev` direto do código bind-montado, garantindo HMR e tempos de
+  # feedback baixos. O bind mount aponta para o repositório no host;
+  # `node_modules` e `.next` ficam em volumes anônimos para não vazar
+  # binários Linux do container para o host (Windows/macOS).
+  # ---------------------------------------------------------------------------
+  app:
+    image: node:20-alpine
+    container_name: navedesk-app-dev
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+      PORT: "4001"
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX}
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_URL: ${AUTH_URL}
+      UPLOAD_DIR: ${UPLOAD_DIR}
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES}
+      # Desativa telemetria do Next.js em dev.
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "4001:4001"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Bind mount do código-fonte para HMR.
+      - .:/app
+      # Volumes anônimos para artefatos gerados dentro do container —
+      # impedem que `node_modules` (binários Linux) e `.next` poluam o host.
+      - /app/node_modules
+      - /app/.next
+      # Anexos: mantém o mesmo volume nomeado do base para preservar uploads.
+      - uploads:/app/public/uploads
+    # `corepack enable` ativa o pnpm pinado pelo `packageManager`/lockfile.
+    # Em seguida instalamos deps (caso o volume anônimo esteja vazio na
+    # primeira subida), aplicamos migrations e iniciamos `pnpm dev`.
+    command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm db:migrate && pnpm dev -H 0.0.0.0 -p 4001"

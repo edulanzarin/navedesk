@@ -1,0 +1,126 @@
+# =============================================================================
+# NaveDesk — docker-compose.yml (produção local)
+#
+# Sobe o stack completo do NaveDesk em uma máquina:
+#   - db  : PostgreSQL 16 (alpine) com healthcheck `pg_isready`
+#   - app : imagem multi-stage construída pelo Dockerfile local; antes de
+#           iniciar `node server.js`, roda `pnpm db:migrate` e
+#           `pnpm db:seed:if-empty` para garantir um boot idempotente.
+#
+# Uso:
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Variáveis lidas do `.env` (ver `.env.example`):
+#   POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB,
+#   DATABASE_URL, DATABASE_POOL_MAX,
+#   AUTH_SECRET, AUTH_URL,
+#   UPLOAD_DIR, UPLOAD_MAX_BYTES
+#
+# Validates:
+#   R18.1 — `docker compose up --build` em máquina limpa sobe db (Postgres 16),
+#           aguarda healthcheck `pg_isready`, roda migrations + seed e inicia
+#           o servidor Next.js.
+#   R18.3 — Volumes nomeados `pgdata` (dados do banco) e `uploads` (anexos)
+#           preservam estado entre subidas.
+#   R17.3 — O `command` do `app` executa `pnpm db:migrate` antes de o servidor
+#           HTTP ficar disponível.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # db — PostgreSQL 16
+  #
+  # Healthcheck `pg_isready` é a porta de entrada que o serviço `app` usa
+  # via `depends_on.condition: service_healthy` para esperar o banco estar
+  # realmente pronto antes de aplicar migrations e iniciar o servidor.
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: navedesk-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # Porta do Postgres NÃO é publicada na rede do host — fica acessível
+    # apenas para o serviço `app` via rede interna do Compose. Isso evita
+    # que máquinas da LAN consigam conectar direto no banco. Para
+    # operações pontuais (psql, pg_dump), use:
+    #   docker compose exec db psql -U $POSTGRES_USER $POSTGRES_DB
+    expose:
+      - "5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # `$$` escapa o `$` no Compose para que a substituição aconteça dentro
+      # do shell do container (vendo as env do próprio Postgres) e não no
+      # host. Assim o healthcheck funciona mesmo se POSTGRES_USER/DB mudarem.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # app — Next.js 15 (standalone)
+  #
+  # Build local a partir do Dockerfile multi-stage da raiz. O comando combina
+  # migrations + seed idempotente + `node server.js` para que clonar o repo,
+  # configurar `.env` e subir o Compose deixe o sistema 100% utilizável.
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: navedesk-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      # Porta do Next.js standalone — o `server.js` lê `PORT` para
+      # decidir em que porta escutar. Mantemos 4001 por padrão para
+      # combinar com a porta exposta no host.
+      PORT: "4001"
+      # Faz o Next.js bindar em todas as interfaces dentro do container,
+      # essencial para que o mapeamento da porta do Docker funcione.
+      # `0.0.0.0` no container NÃO expõe automaticamente na LAN — quem
+      # faz isso é o `ports:` abaixo.
+      HOSTNAME: 0.0.0.0
+      # String de conexão consumida pelo cliente Drizzle/pg (`src/db/client.ts`).
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX}
+      # Auth.js v5
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_URL: ${AUTH_URL}
+      # Upload local — `UPLOAD_DIR` deve apontar para o ponto de montagem
+      # do volume `uploads` para que arquivos persistam entre subidas.
+      UPLOAD_DIR: ${UPLOAD_DIR}
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES}
+    ports:
+      # Publicação `0.0.0.0:4001 -> container:4001` torna o app acessível
+      # pelo IP da máquina na LAN (qualquer pessoa que enxergar o host
+      # consegue abrir `http://<ip-do-pc>:4001`). Restrinja via firewall
+      # do Windows/macOS/Linux ou use `127.0.0.1:4001:4001` para limitar
+      # ao próprio host.
+      - "4001:4001"
+    volumes:
+      # Persiste anexos enviados em `public/uploads/` no volume nomeado
+      # `uploads`. O Dockerfile já copia a pasta `public` com `.gitkeep`;
+      # este volume sobrepõe apenas `uploads/`, mantendo o resto.
+      - uploads:/app/public/uploads
+    # 1) `pnpm db:migrate`        — aplica migrations pendentes (idempotente).
+    # 2) `pnpm db:seed:if-empty`  — popula categorias/SLAs/usuários se `users`
+    #                              estiver vazia; no-op caso contrário.
+    # 3) `node server.js`          — entrypoint do Next.js standalone.
+    command: sh -c "pnpm db:migrate && pnpm db:seed:if-empty && node server.js"
+
+# =============================================================================
+# Volumes nomeados — preservam dados entre `docker compose down`/`up`.
+#   pgdata  : dados do Postgres
+#   uploads : anexos persistidos pelo storage local
+# =============================================================================
+volumes:
+  pgdata:
+  uploads:

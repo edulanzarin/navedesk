@@ -1,0 +1,86 @@
+/*
+ * NaveDesk — design tokens.
+ *
+ * Fonte única de verdade para a paleta índigo Tahoe, raios, sombras e
+ * tipografia. Espelhado em `src/lib/design-tokens.ts` para uso em
+ * componentes (ver task 4.2). Importado em `globals.css` na task 4.3.
+ *
+ * Estética inspirada em macOS Tahoe (Liquid Glass), sem cópia: superfícies
+ * neutras quentes-frias, sombras suaves, cantos squircle e acento índigo.
+ *
+ * Validates: R19.1, R21.1, R21.2, R21.3, R21.4, R21.5
+ */
+
+:root {
+    /* ── superfícies ──────────────────────────────────────── */
+    --bg: #f3f3f6;
+    --bg-elev: #ffffff;
+    --bg-sunk: #ececef;
+    --bg-rail: rgba(248, 248, 250, 0.72);
+    --bg-overlay: rgba(255, 255, 255, 0.82);
+
+    /* ── linhas ───────────────────────────────────────────── */
+    --line: rgba(0, 0, 0, 0.08);
+    --line-strong: rgba(0, 0, 0, 0.14);
+    --line-soft: rgba(0, 0, 0, 0.04);
+
+    /* ── tinta (ink) ──────────────────────────────────────── */
+    --ink: #18181b;
+    --ink-2: #3f3f46;
+    --ink-3: #6b6b73;
+    --ink-4: #9a9aa3;
+    --ink-5: #c4c4cc;
+
+    /* ── acento (índigo Tahoe) ────────────────────────────── */
+    --accent: #5e5ce6;
+    --accent-2: #7d7bee;
+    --accent-soft: rgba(94, 92, 230, 0.12);
+    --accent-soft-2: rgba(94, 92, 230, 0.06);
+    --accent-ink: #ffffff;
+
+    /* ── status ───────────────────────────────────────────── */
+    --green: #30b257;
+    --green-soft: rgba(48, 178, 87, 0.12);
+    --amber: #d98c00;
+    --amber-soft: rgba(217, 140, 0, 0.14);
+    --red: #e0342b;
+    --red-soft: rgba(224, 52, 43, 0.12);
+    --blue: #1473e6;
+    --blue-soft: rgba(20, 115, 230, 0.12);
+    --grey-soft: rgba(0, 0, 0, 0.06);
+
+    /* ── raios ────────────────────────────────────────────── */
+    --r-1: 6px;
+    --r-2: 8px;
+    --r-3: 10px;
+    --r-4: 14px;
+    --r-5: 18px;
+    --r-pill: 9999px;
+
+    /* ── sombras ──────────────────────────────────────────── */
+    --sh-1:
+        0 1px 0 rgba(255, 255, 255, 0.6) inset,
+        0 1px 2px rgba(15, 15, 20, 0.04),
+        0 0 0 0.5px rgba(0, 0, 0, 0.06);
+    --sh-2:
+        0 1px 0 rgba(255, 255, 255, 0.5) inset,
+        0 4px 14px rgba(15, 15, 20, 0.06),
+        0 0 0 0.5px rgba(0, 0, 0, 0.06);
+    --sh-pop:
+        0 1px 0 rgba(255, 255, 255, 0.6) inset,
+        0 18px 48px rgba(15, 15, 20, 0.18),
+        0 0 0 0.5px rgba(0, 0, 0, 0.08);
+
+    /* ── tipografia ───────────────────────────────────────── */
+    /*
+     * `--font-geist-sans` / `--font-geist-mono` são expostas pelo pacote
+     * `geist` (next/font) em `src/app/layout.tsx`. O segundo argumento
+     * de `var()` cobre o caso de a fonte não estar disponível, conforme
+     * R21.3 (fallback ui-sans-serif / ui-monospace).
+     */
+    --font:
+        var(--font-geist-sans), ui-sans-serif, -apple-system,
+        BlinkMacSystemFont, sans-serif;
+    --font-mono:
+        var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}

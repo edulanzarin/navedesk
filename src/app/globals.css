@@ -1,0 +1,107 @@
+/*
+ * Folha de estilos global do NaveDesk.
+ *
+ * Em Tailwind v4 todos os `@import` devem vir antes da diretiva
+ * `@import "tailwindcss"`. Os tokens (paleta índigo Tahoe, raios,
+ * sombras e tipografia) ficam em `src/styles/tokens.css` e são
+ * importados aqui para serem aplicados globalmente.
+ *
+ * As variáveis `--font-geist-sans` / `--font-geist-mono` são expostas
+ * pelo pacote `geist` (next/font) através de `<html className=...>`
+ * em `src/app/layout.tsx` e consumidas em `tokens.css` por `--font` e
+ * `--font-mono`.
+ *
+ * Validates: R20.2, R21.2, R21.3
+ */
+@import "../styles/tokens.css";
+@import "tailwindcss";
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code,
+kbd,
+pre,
+samp {
+    font-family: var(--font-mono);
+}
+
+/*
+ * Animações utilitárias para overlays (Dialog, Dropdown, Toast).
+ *
+ * Mantemos os keyframes aqui (em vez de instalar `tailwindcss-animate`)
+ * porque são poucos e específicos. Os primitivos consomem via classes
+ * `animate-fade-in`, `animate-fade-out`, `animate-zoom-in` e
+ * `animate-zoom-out`, combinadas com seletores `data-[state=open]` /
+ * `data-[state=closed]` do Radix.
+ */
+@keyframes navedesk-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes navedesk-fade-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes navedesk-zoom-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes navedesk-zoom-out {
+    from {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.96);
+    }
+}
+
+@utility animate-fade-in {
+    animation: navedesk-fade-in 150ms ease-out;
+}
+
+@utility animate-fade-out {
+    animation: navedesk-fade-out 150ms ease-in;
+}
+
+@utility animate-zoom-in {
+    animation: navedesk-zoom-in 150ms ease-out;
+}
+
+@utility animate-zoom-out {
+    animation: navedesk-zoom-out 150ms ease-in;
+}

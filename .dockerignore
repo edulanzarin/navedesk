@@ -1,0 +1,61 @@
+# =============================================================================
+# .dockerignore — exclui arquivos/pastas do contexto enviado ao Docker daemon.
+# Mantém a build enxuta e evita vazar segredos / arquivos de desenvolvimento
+# para dentro da imagem.
+# =============================================================================
+
+# Dependências (reinstaladas dentro do builder a partir do lockfile)
+node_modules
+.pnp
+.pnp.*
+.yarn/cache
+.yarn/install-state.gz
+
+# Build artefatos do Next.js
+.next
+out
+build
+
+# Controle de versão e metadados de IDE
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+
+# Specs / docs internos do projeto (não precisam ir para a imagem)
+.kiro
+.example
+
+# Testes e relatórios (não fazem parte do runtime)
+tests
+coverage
+playwright-report
+test-results
+playwright/.cache
+
+# Variáveis de ambiente locais — nunca devem entrar na imagem.
+# Mantemos `.env.example` para que `cp .env.example .env` funcione fora do build.
+.env
+.env.*
+!.env.example
+
+# Logs e artefatos diversos
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# TypeScript build info (gerado durante a build dentro do container)
+*.tsbuildinfo
+next-env.d.ts
+
+# Docker-related — evita recursão se alguém rodar build dentro da pasta
+Dockerfile
+docker-compose*.yml
+.dockerignore

@@ -1,0 +1,76 @@
+{
+    "root": true,
+    "extends": [
+        "next/core-web-vitals",
+        "next/typescript",
+        "plugin:jsx-a11y/recommended",
+        "plugin:import/typescript",
+        "prettier"
+    ],
+    "plugins": ["import", "jsx-a11y"],
+    "settings": {
+        "import/resolver": {
+            "typescript": {
+                "project": "./tsconfig.json"
+            },
+            "node": {
+                "extensions": [".js", ".jsx", ".ts", ".tsx"]
+            }
+        }
+    },
+    "rules": {
+        "import/no-duplicates": "error",
+        "import/order": [
+            "error",
+            {
+                "groups": [
+                    "builtin",
+                    "external",
+                    "internal",
+                    "parent",
+                    "sibling",
+                    "index",
+                    "object",
+                    "type"
+                ],
+                "pathGroups": [
+                    {
+                        "pattern": "react",
+                        "group": "external",
+                        "position": "before"
+                    },
+                    {
+                        "pattern": "next/**",
+                        "group": "external",
+                        "position": "before"
+                    },
+                    {
+                        "pattern": "@/**",
+                        "group": "internal"
+                    }
+                ],
+                "pathGroupsExcludedImportTypes": ["react", "next"],
+                "newlines-between": "always",
+                "alphabetize": {
+                    "order": "asc",
+                    "caseInsensitive": true
+                }
+            }
+        ],
+        "import/no-unresolved": "error",
+        "import/first": "error",
+        "import/newline-after-import": "error"
+    },
+    "ignorePatterns": [
+        ".next",
+        "node_modules",
+        "coverage",
+        "playwright-report",
+        "public",
+        "src/db/migrations",
+        "*.config.js",
+        "*.config.mjs",
+        "*.config.ts",
+        "next-env.d.ts"
+    ]
+}
