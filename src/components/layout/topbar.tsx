@@ -23,6 +23,7 @@
 import * as React from "react";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { Avatar } from "@/components/ui/avatar";
 import {
@@ -36,9 +37,62 @@ import {
 import { cn } from "@/lib/cn";
 import type { SessionUser } from "@/types/domain";
 
+/**
+ * Mapa de rotas para títulos exibidos na topbar.
+ *
+ * A chave é o **prefixo** da rota (sem trailing slash, exceto a raiz
+ * `/dashboard`). A lookup é feita por `startsWith`, então rotas mais
+ * específicas precisam aparecer ANTES das mais genéricas — por
+ * exemplo, `/tickets/atribuidos` deve preceder `/tickets` na ordem
+ * de iteração.
+ *
+ * Adicionar uma nova área da aplicação? Inclua a entrada aqui e
+ * ela aparece automaticamente.
+ */
+const ROUTE_TITLES: ReadonlyArray<readonly [string, string]> = [
+    ["/dashboard", "Dashboard"],
+    ["/tickets/novo", "Novo ticket"],
+    ["/tickets/atribuidos", "Atribuídos a mim"],
+    ["/tickets", "Tickets"],
+    ["/kb/novo", "Novo artigo"],
+    ["/kb", "Base de conhecimento"],
+    ["/admin/usuarios", "Usuários"],
+    ["/admin/categorias", "Categorias"],
+    ["/admin/departamentos", "Departamentos"],
+    ["/admin/sla", "Políticas de SLA"],
+    ["/admin/geral", "Configurações"],
+    ["/perfil", "Perfil"],
+] as const;
+
+/**
+ * Resolve o título da página corrente a partir do `pathname`. Faz
+ * busca por prefixo na ordem de declaração — ver comentário em
+ * `ROUTE_TITLES` para a regra de precedência.
+ *
+ * O fallback (`fallback`) é usado em rotas não mapeadas — em geral
+ * o nome da marca, para preservar o branding.
+ */
+function resolveRouteTitle(
+    pathname: string | null,
+    fallback: string,
+): string {
+    if (!pathname) return fallback;
+    for (const [prefix, title] of ROUTE_TITLES) {
+        if (pathname === prefix || pathname.startsWith(prefix + "/")) {
+            return title;
+        }
+    }
+    return fallback;
+}
+
 export interface TopbarProps {
-    /** Título da página corrente, renderizado em destaque. */
-    title: string;
+    /**
+     * Título da página corrente. Quando omitido, é derivado do
+     * `pathname` via `resolveRouteTitle`. Páginas que precisem de um
+     * título dinâmico (ex.: detalhe de ticket com o ID) podem passar
+     * o valor explicitamente.
+     */
+    title?: string;
     /** Subtítulo opcional, exibido em texto menor logo abaixo. */
     subtitle?: string;
     /** Slot livre para ações específicas da página (botões, filtros). */
@@ -51,6 +105,12 @@ export interface TopbarProps {
      * bundle e para permitir testes injetando uma ação fake.
      */
     signOutAction: () => Promise<void>;
+    /**
+     * Fallback usado quando nem `title` nem o mapa de rotas
+     * resolverem o nome da página. Default: nome da marca, vindo do
+     * pai (`BRAND_NAME`).
+     */
+    fallbackTitle?: string;
     /** Classes adicionais aplicadas ao wrapper. */
     className?: string;
 }
@@ -88,8 +148,14 @@ export function Topbar({
     actions,
     user,
     signOutAction,
+    fallbackTitle = "Navedesk",
     className,
 }: TopbarProps): React.JSX.Element {
+    const pathname = usePathname();
+    // Título explícito tem precedência; em rotas conhecidas, o mapa
+    // resolve. Fora disso, cai no fallback (nome da marca).
+    const resolvedTitle = title ?? resolveRouteTitle(pathname, fallbackTitle);
+
     return (
         <header
             className={cn(
@@ -99,7 +165,7 @@ export function Topbar({
         >
             <div className="min-w-0">
                 <h1 className="truncate text-base font-medium text-(--ink)">
-                    {title}
+                    {resolvedTitle}
                 </h1>
                 {subtitle ? (
                     <p className="truncate text-xs text-(--ink-3)">

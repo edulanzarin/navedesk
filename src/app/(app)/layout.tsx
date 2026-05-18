@@ -157,7 +157,7 @@ export default async function AppLayout({
             <Sidebar user={user} counts={counts} />
             <div className="flex min-w-0 flex-1 flex-col">
                 <Topbar
-                    title={BRAND_NAME}
+                    fallbackTitle={BRAND_NAME}
                     user={user}
                     signOutAction={logoutAction}
                 />
