@@ -36,6 +36,14 @@ export interface AttachmentLike {
     uploaderId: string;
     /** Ticket ao qual o anexo está vinculado, ou `null` se ainda não associado. */
     ticketId: string | null;
+    /**
+     * Mensagem do ticket à qual o anexo está vinculado, ou `null`. Anexos
+     * **órfãos** (com `ticketId` E `messageId` ambos `null`) representam
+     * arquivos referenciados inline em artigos da Base de Conhecimento
+     * — o `canReadAttachment` libera leitura nesses casos para qualquer
+     * usuário autenticado.
+     */
+    messageId: string | null;
 }
 
 /**
@@ -150,13 +158,19 @@ export function canPostInternalNote(user: SessionUser): boolean {
  * Permite baixar/visualizar um anexo.
  *
  * - `admin` e `tecnico`: leitura irrestrita.
- * - `solicitante`: pode ler se foi quem enviou o anexo (`uploaderId === user.id`)
- *   ou se o anexo pertence a um ticket que ele mesmo abriu.
+ * - `solicitante`: pode ler se foi quem enviou o anexo
+ *   (`uploaderId === user.id`), se o anexo pertence a um ticket que ele
+ *   mesmo abriu, ou se o anexo é **órfão** (sem `ticketId` e sem
+ *   `messageId`). Anexos órfãos representam arquivos referenciados
+ *   inline em artigos da Base de Conhecimento (imagens/vídeos colados
+ *   no markdown), os quais já são visíveis a qualquer usuário
+ *   autenticado via página do artigo. O ID é um UUIDv4 não-enumerável,
+ *   então liberar leitura por id direto não cria superfície adicional
+ *   além da própria página do KB.
  *
  * O parâmetro `ticket` é opcional para permitir checagem antes de
- * resolver o ticket associado (por exemplo, anexos órfãos ainda no
- * fluxo de upload). Quando fornecido, deve ser o ticket referenciado
- * por `attachment.ticketId`.
+ * resolver o ticket associado. Quando fornecido, deve ser o ticket
+ * referenciado por `attachment.ticketId`.
  */
 export function canReadAttachment(
     user: SessionUser,
@@ -166,6 +180,12 @@ export function canReadAttachment(
     if (user.role === "admin" || user.role === "tecnico") return true;
     if (attachment.uploaderId === user.id) return true;
     if (ticket && ticket.requesterId === user.id) return true;
+    // Anexo órfão (não vinculado a ticket nem a mensagem) é tratado
+    // como recurso público para usuários autenticados — caso típico de
+    // imagem/vídeo embutido em artigo KB.
+    if (attachment.ticketId === null && attachment.messageId === null) {
+        return true;
+    }
     return false;
 }
 

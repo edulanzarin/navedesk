@@ -96,6 +96,7 @@ function makeAttachment(
     return {
         uploaderId: "user-solicitante",
         ticketId: "NVD-1",
+        messageId: null,
         ...overrides,
     };
 }
@@ -394,11 +395,22 @@ describe("canReadAttachment", () => {
         expect(canReadAttachment(sol, att)).toBe(false);
     });
 
-    it("solicitante NÃO lê anexo alheio quando ticket é null (anexo órfão)", () => {
+    it("solicitante LÊ anexo órfão (ticketId e messageId nulos) — caso de imagem/vídeo embutido em artigo KB", () => {
         const sol = makeUser("solicitante", "sol-1");
         const att = makeAttachment({
             uploaderId: "outro",
             ticketId: null,
+            messageId: null,
+        });
+        expect(canReadAttachment(sol, att, null)).toBe(true);
+    });
+
+    it("solicitante NÃO lê anexo de mensagem alheia em ticket que não é dele", () => {
+        const sol = makeUser("solicitante", "sol-1");
+        const att = makeAttachment({
+            uploaderId: "outro",
+            ticketId: null,
+            messageId: "msg-1",
         });
         expect(canReadAttachment(sol, att, null)).toBe(false);
     });
