@@ -14,13 +14,16 @@
  * reusá-las tanto no servidor (`services/`) quanto no cliente
  * (`SlaMeter`) sem efeitos colaterais.
  *
+ * A unidade da política é **minutos** (campo `SlaPolicy.minutes`). Minutos
+ * permitem prazos sub-hora (ex.: 30 minutos para prioridade `critica`).
+ *
  * Validates: R6.2, R6.3, R6.4, R6.5, R6.6, R6.7, R6.9.
  */
 
 import type { Priority, SlaInfo, SlaPolicy } from "@/types/domain";
 
-/** Milissegundos em uma hora — fator de conversão `hours → ms`. */
-const MS_PER_HOUR = 3_600_000;
+/** Milissegundos em um minuto — fator de conversão `minutes → ms`. */
+const MS_PER_MINUTE = 60_000;
 
 /** Limiar relativo (fração de `totalMs`) abaixo do qual o nível vira `crit`. */
 const CRIT_THRESHOLD = 0.1;
@@ -32,15 +35,17 @@ const WARN_THRESHOLD = 0.25;
  * Calcula o prazo de SLA a partir de `now`, da prioridade e das políticas
  * vigentes.
  *
- * O resultado satisfaz `result.getTime() === now.getTime() + policy.hours *
- * 3_600_000`, onde `policy` é a entrada de `policies` cuja `priority` casa com
- * o argumento. A função é total no domínio válido e lança um erro descritivo
- * quando não há política para a prioridade — situação que indica configuração
- * incompleta de banco e deve ser tratada na borda.
+ * O resultado satisfaz `result.getTime() === now.getTime() +
+ * policy.minutes * 60_000`, onde `policy` é a entrada de `policies` cuja
+ * `priority` casa com o argumento. A função é total no domínio válido e
+ * lança um erro descritivo quando não há política para a prioridade —
+ * situação que indica configuração incompleta de banco e deve ser tratada
+ * na borda.
  *
  * Pré-condições (responsabilidade do chamador):
  * - `now` é um `Date` válido.
- * - `policies` contém exatamente uma entrada por prioridade, com `hours > 0`.
+ * - `policies` contém exatamente uma entrada por prioridade, com
+ *   `minutes > 0`.
  *
  * @throws {Error} se nenhuma política for encontrada para `priority`.
  */
@@ -50,7 +55,7 @@ export function computeSlaDeadline(
     policies: SlaPolicy[],
 ): Date {
     const policy = findPolicy(priority, policies);
-    return new Date(now.getTime() + policy.hours * MS_PER_HOUR);
+    return new Date(now.getTime() + policy.minutes * MS_PER_MINUTE);
 }
 
 /**
@@ -60,9 +65,9 @@ export function computeSlaDeadline(
  * Campos do retorno:
  * - `remainingMs`: `deadline.getTime() - now.getTime()`. Negativo quando o
  *   prazo já venceu.
- * - `pctElapsed`: percentual decorrido em relação a `totalMs = policy.hours *
- *   3_600_000`, fixado em `[0, 100]` para que `now` antes da criação ou muito
- *   após o vencimento não rompa a UI.
+ * - `pctElapsed`: percentual decorrido em relação a `totalMs =
+ *   policy.minutes * 60_000`, fixado em `[0, 100]` para que `now` antes
+ *   da criação ou muito após o vencimento não rompa a UI.
  * - `level`: nível de alerta segundo os limiares do design:
  *   - `remainingMs ≤ 0` → `"breached"` (estado absorvente, R6.7).
  *   - `remainingMs ≤ totalMs * 0.10` → `"crit"`.
@@ -81,7 +86,7 @@ export function computeSlaInfo(
     now: Date,
 ): SlaInfo {
     const policy = findPolicy(priority, policies);
-    const totalMs = policy.hours * MS_PER_HOUR;
+    const totalMs = policy.minutes * MS_PER_MINUTE;
     const remainingMs = deadline.getTime() - now.getTime();
     const pctElapsed = clamp(100 - (remainingMs / totalMs) * 100, 0, 100);
 

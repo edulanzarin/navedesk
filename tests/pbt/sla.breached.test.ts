@@ -14,9 +14,9 @@
  * `offsetMs ≥ 0` em milissegundos e calculamos `now = deadline + offsetMs`.
  * Como `offsetMs` cobre `0` (caso de fronteira) e valores positivos, a
  * propriedade exercita tanto o instante exato do vencimento quanto cenários de
- * atraso significativo. As políticas geradas garantem ao menos uma entrada por
- * prioridade com `hours > 0`, permitindo que `computeSlaInfo` execute o
- * cálculo de `totalMs` sem cair no caminho de erro.
+ * atraso significativo. As políticas geradas garantem ao menos uma entrada
+ * por prioridade com `minutes > 0`, permitindo que `computeSlaInfo`
+ * execute o cálculo de `totalMs` sem cair no caminho de erro.
  *
  * **Validates: Requirements 6.7**
  */
@@ -47,21 +47,22 @@ const dateArb = fc
 const priorityArb: fc.Arbitrary<Priority> = fc.constantFrom(...PRIORITIES);
 
 /**
- * Gera uma lista completa de políticas (uma por prioridade) com `hours > 0`,
- * cobrindo o pré-requisito de configuração total exigido por `findPolicy`.
+ * Gera uma lista completa de políticas (uma por prioridade) com `minutes
+ * > 0`, cobrindo o pré-requisito de configuração total exigido por
+ * `findPolicy`.
  */
 const policiesArb: fc.Arbitrary<SlaPolicy[]> = fc
     .tuple(
-        fc.integer({ min: 1, max: 240 }),
-        fc.integer({ min: 1, max: 240 }),
-        fc.integer({ min: 1, max: 240 }),
-        fc.integer({ min: 1, max: 240 }),
+        fc.integer({ min: 1, max: 14_400 }),
+        fc.integer({ min: 1, max: 14_400 }),
+        fc.integer({ min: 1, max: 14_400 }),
+        fc.integer({ min: 1, max: 14_400 }),
     )
     .map(([baixa, media, alta, critica]) => [
-        { priority: "baixa", hours: baixa },
-        { priority: "media", hours: media },
-        { priority: "alta", hours: alta },
-        { priority: "critica", hours: critica },
+        { priority: "baixa", minutes: baixa },
+        { priority: "media", minutes: media },
+        { priority: "alta", minutes: alta },
+        { priority: "critica", minutes: critica },
     ]);
 
 /**

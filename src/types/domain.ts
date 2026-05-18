@@ -106,12 +106,14 @@ export interface SessionUser {
 }
 
 /**
- * Política de SLA por prioridade. `hours` define o prazo total em horas
- * a partir da criação do ticket.
+ * Política de SLA por prioridade. `minutes` define o prazo total em
+ * minutos a partir da criação do ticket. A unidade é minutos (e não
+ * horas) para permitir prazos sub-hora — ex.: 30 minutos para
+ * prioridade `critica`.
  */
 export interface SlaPolicy {
     priority: Priority;
-    hours: number;
+    minutes: number;
 }
 
 /**

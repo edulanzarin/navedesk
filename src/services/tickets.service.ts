@@ -83,7 +83,7 @@ class AttachmentLinkError extends Error {
  */
 async function loadAllPolicies(executor: DbExecutor): Promise<SlaPolicy[]> {
     const rows = await executor.select().from(slaPolicies);
-    return rows.map((row) => ({ priority: row.priority, hours: row.hours }));
+    return rows.map((row) => ({ priority: row.priority, minutes: row.minutes }));
 }
 
 /**

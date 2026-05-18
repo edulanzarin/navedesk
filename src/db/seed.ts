@@ -19,7 +19,7 @@
  * Default data (R6.1, R14.2, R18.6)
  *   - Departments: Fiscal, Contabilidade, TI
  *   - Categories: hardware, software, sistema, rede, acesso, email
- *   - SLA policies: baixa=48h, media=24h, alta=8h, critica=2h
+ *   - SLA policies: critica=30min, alta=60min, media=120min, baixa=180min
  *   - KB categories: acesso, sistemas, geral
  *   - Users: admin, técnico e solicitante (senha "admin123",
  *     bcrypt cost 12, R14.2)
@@ -73,11 +73,13 @@ const DEFAULT_CATEGORIES: readonly SeedCategory[] = [
     { id: "email", label: "E-mail", sub: "Caixa postal e listas", icon: "mail" },
 ] as const;
 
-const DEFAULT_SLA: ReadonlyArray<{ priority: Priority; hours: number }> = [
-    { priority: "baixa", hours: 48 },
-    { priority: "media", hours: 24 },
-    { priority: "alta", hours: 8 },
-    { priority: "critica", hours: 2 },
+const DEFAULT_SLA: ReadonlyArray<{ priority: Priority; minutes: number }> = [
+    // Prazos em **minutos**. Granularidade fina permite prazos sub-hora
+    // — ex.: 30 minutos para `critica`. Veja `0003_sla_minutes.sql`.
+    { priority: "baixa", minutes: 180 },   // 3h
+    { priority: "media", minutes: 120 },   // 2h
+    { priority: "alta", minutes: 60 },     // 1h
+    { priority: "critica", minutes: 30 },  // 30 min
 ];
 
 interface SeedKbCategory {
@@ -220,7 +222,7 @@ export async function seedIfEmpty(
         await tx.insert(slaPolicies).values(
             DEFAULT_SLA.map((p) => ({
                 priority: p.priority,
-                hours: p.hours,
+                minutes: p.minutes,
             })),
         );
 

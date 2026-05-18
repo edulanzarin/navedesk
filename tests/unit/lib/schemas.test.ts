@@ -336,28 +336,28 @@ describe("CreateUserSchema", () => {
 });
 
 describe("UpdateSlaPolicySchema", () => {
-    it("aceita inteiro positivo de horas", () => {
-        const result = UpdateSlaPolicySchema.safeParse({ priority: "alta", hours: 8 });
+    it("aceita inteiro positivo de minutos", () => {
+        const result = UpdateSlaPolicySchema.safeParse({ priority: "alta", minutes: 60 });
         expect(result.success).toBe(true);
     });
 
-    it("rejeita zero horas", () => {
-        const result = UpdateSlaPolicySchema.safeParse({ priority: "alta", hours: 0 });
+    it("rejeita zero minutos", () => {
+        const result = UpdateSlaPolicySchema.safeParse({ priority: "alta", minutes: 0 });
         expect(result.success).toBe(false);
     });
 
-    it("rejeita horas negativas", () => {
-        const result = UpdateSlaPolicySchema.safeParse({ priority: "alta", hours: -1 });
+    it("rejeita minutos negativos", () => {
+        const result = UpdateSlaPolicySchema.safeParse({ priority: "alta", minutes: -1 });
         expect(result.success).toBe(false);
     });
 
-    it("rejeita horas decimais", () => {
-        const result = UpdateSlaPolicySchema.safeParse({ priority: "alta", hours: 1.5 });
+    it("rejeita minutos decimais", () => {
+        const result = UpdateSlaPolicySchema.safeParse({ priority: "alta", minutes: 1.5 });
         expect(result.success).toBe(false);
     });
 
     it("rejeita prioridade fora do enum", () => {
-        const result = UpdateSlaPolicySchema.safeParse({ priority: "urgente", hours: 4 });
+        const result = UpdateSlaPolicySchema.safeParse({ priority: "urgente", minutes: 30 });
         expect(result.success).toBe(false);
     });
 });

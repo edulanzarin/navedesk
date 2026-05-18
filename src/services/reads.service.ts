@@ -83,7 +83,7 @@ export async function getAllSlaPolicies(): Promise<SlaPolicy[]> {
     const rows = await db.select().from(slaPolicies);
     const policies: SlaPolicy[] = rows.map((row) => ({
         priority: row.priority,
-        hours: row.hours,
+        minutes: row.minutes,
     }));
     stableReadsCache.set(STABLE_READ_KEYS.slaPolicies, policies);
     return policies;

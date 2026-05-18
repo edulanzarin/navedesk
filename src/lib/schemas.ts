@@ -87,14 +87,16 @@ export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 /**
  * Entrada para atualização de uma política de SLA.
  *
- * `hours` deve ser um inteiro positivo; tickets já existentes preservam
- * seu `slaDeadline` (a nova política se aplica apenas a tickets futuros).
+ * `minutes` deve ser um inteiro positivo (mínimo 1 minuto); tickets já
+ * existentes preservam seu `slaDeadline` (a nova política se aplica
+ * apenas a tickets futuros). A unidade é minutos para permitir prazos
+ * sub-hora — ex.: 30 minutos para prioridade `critica`.
  *
  * Validates: R15.2.
  */
 export const UpdateSlaPolicySchema = z.object({
     priority: z.enum(PRIORITIES),
-    hours: z.number().int().positive(),
+    minutes: z.number().int().positive(),
 });
 export type UpdateSlaPolicyInput = z.infer<typeof UpdateSlaPolicySchema>;
 

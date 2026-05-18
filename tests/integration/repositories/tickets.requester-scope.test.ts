@@ -122,11 +122,11 @@ beforeAll(async () => {
         );
 
         await pool.query(
-            `INSERT INTO sla_policies (priority, hours) VALUES
-                ('baixa', 48),
-                ('media', 24),
-                ('alta', 8),
-                ('critica', 2)`,
+            `INSERT INTO sla_policies (priority, minutes) VALUES
+                ('baixa', 2880),
+                ('media', 1440),
+                ('alta', 480),
+                ('critica', 120)`,
         );
 
         // The bcrypt hash is irrelevant for this suite — `password_hash`

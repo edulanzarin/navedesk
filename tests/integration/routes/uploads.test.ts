@@ -206,10 +206,10 @@ describe.skipIf(!dockerAvailable)(
             });
 
             await db.insert(slaPolicies).values([
-                { priority: "baixa", hours: 48 },
-                { priority: "media", hours: 24 },
-                { priority: "alta", hours: 8 },
-                { priority: "critica", hours: 2 },
+                { priority: "baixa", minutes: 48 * 60 },
+                { priority: "media", minutes: 24 * 60 },
+                { priority: "alta", minutes: 8 * 60 },
+                { priority: "critica", minutes: 2 * 60 },
             ]);
 
             // bcrypt cost is irrelevant for this suite (auth is mocked) —

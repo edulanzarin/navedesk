@@ -69,8 +69,12 @@ export const categories = pgTable("categories", {
 });
 
 export const slaPolicies = pgTable("sla_policies", {
+    // `minutes` armazena o prazo total em minutos. A migração manual
+    // 0003_sla_minutes.sql renomeia a coluna antiga `hours` e converte
+    // os valores. Minutos permitem expressar prazos sub-hora (ex.: 30
+    // min para `critica`).
     priority: priorityEnum("priority").primaryKey(),
-    hours: integer("hours").notNull(),
+    minutes: integer("minutes").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
         .notNull()
         .defaultNow(),

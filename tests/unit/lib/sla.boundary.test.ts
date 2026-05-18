@@ -4,14 +4,15 @@
  * Cobre os limiares de classificação do nível de SLA (`ok`, `warn`, `crit`,
  * `breached`) e o clamping do percentual decorrido (`pctElapsed`) em [0, 100].
  *
- * Os limiares definidos pelo design são (com `totalMs = hours * 3_600_000`):
+ * Os limiares definidos pelo design são (com `totalMs = minutes * 60_000`):
  * - `remainingMs > totalMs * 0.25`            → "ok"      (R6.4)
  * - `totalMs * 0.10 < remainingMs ≤ 25%`      → "warn"    (R6.5)
  * - `0 < remainingMs ≤ totalMs * 0.10`        → "crit"    (R6.6)
  * - `remainingMs ≤ 0`                         → "breached"
  *
- * Para os testes usamos `hours = 10`, que produz `totalMs = 36_000_000 ms`
- * (10 horas em milissegundos). Os percentuais ficam, então, em valores inteiros:
+ * Para os testes usamos `minutes = 600` (10 horas), que produz
+ * `totalMs = 36_000_000 ms`. Os percentuais ficam, então, em valores
+ * inteiros:
  * - 25% → 9_000_000 ms
  * - 10% → 3_600_000 ms
  *
@@ -23,10 +24,10 @@ import { describe, expect, it } from "vitest";
 import { computeSlaInfo } from "@/lib/sla";
 import type { Priority, SlaPolicy } from "@/types/domain";
 
-const HOURS = 10;
-const TOTAL_MS = HOURS * 3_600_000; // 36_000_000
+const MINUTES = 600; // 10 horas
+const TOTAL_MS = MINUTES * 60_000; // 36_000_000
 const PRIORITY: Priority = "media";
-const POLICIES: SlaPolicy[] = [{ priority: PRIORITY, hours: HOURS }];
+const POLICIES: SlaPolicy[] = [{ priority: PRIORITY, minutes: MINUTES }];
 
 /**
  * Helper que constrói `(deadline, now)` tais que

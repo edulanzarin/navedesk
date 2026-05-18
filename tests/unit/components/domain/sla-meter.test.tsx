@@ -24,10 +24,10 @@ import type { SlaPolicy, TicketStatus } from "@/types/domain";
 
 /** Política única usada pelos cenários — política de prioridade `media` em 8h. */
 const POLICIES: SlaPolicy[] = [
-    { priority: "baixa", hours: 24 },
-    { priority: "media", hours: 8 },
-    { priority: "alta", hours: 4 },
-    { priority: "critica", hours: 1 },
+    { priority: "baixa", minutes: 24 * 60 },
+    { priority: "media", minutes: 8 * 60 },
+    { priority: "alta", minutes: 4 * 60 },
+    { priority: "critica", minutes: 60 },
 ];
 
 const HOUR_MS = 3_600_000;

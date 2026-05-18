@@ -159,11 +159,11 @@ beforeAll(async () => {
         // does not require this, but matching the production seed keeps
         // the schema invariants exercised by the migration realistic).
         await pool.query(
-            `INSERT INTO sla_policies (priority, hours) VALUES
-                ('baixa', 48),
-                ('media', 24),
-                ('alta', 8),
-                ('critica', 2)`,
+            `INSERT INTO sla_policies (priority, minutes) VALUES
+                ('baixa', 2880),
+                ('media', 1440),
+                ('alta', 480),
+                ('critica', 120)`,
         );
 
         // 2 users: 1 solicitante (the requester) and 1 tecnico (the actor

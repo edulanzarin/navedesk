@@ -30,8 +30,8 @@ const priorityArb: fc.Arbitrary<Priority> = fc.constantFrom(
     "critica",
 );
 
-/** Gera horas inteiras de 1 a 720 (~30 dias). */
-const hoursArb: fc.Arbitrary<number> = fc.integer({ min: 1, max: 720 });
+/** Gera minutos inteiros de 1 a 43_200 (~30 dias). */
+const minutesArb: fc.Arbitrary<number> = fc.integer({ min: 1, max: 43_200 });
 
 /**
  * Gera uma tripla `(now1, now2, deadline)` com `now1 < now2` estritamente,
@@ -65,9 +65,9 @@ describe("computeSlaInfo — Property 2: remainingMs é estritamente decrescente
             fc.property(
                 timesArb,
                 priorityArb,
-                hoursArb,
-                ({ now1, now2, deadline }, priority, hours) => {
-                    const policies: SlaPolicy[] = [{ priority, hours }];
+                minutesArb,
+                ({ now1, now2, deadline }, priority, minutes) => {
+                    const policies: SlaPolicy[] = [{ priority, minutes }];
 
                     const info1 = computeSlaInfo(deadline, priority, policies, now1);
                     const info2 = computeSlaInfo(deadline, priority, policies, now2);

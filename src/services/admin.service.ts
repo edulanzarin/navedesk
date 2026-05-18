@@ -106,8 +106,8 @@ function isUniqueViolation(err: unknown): boolean {
  *
  * 1. Verifica `canManageSla(actor)`. Falha → `FORBIDDEN`.
  * 2. Valida `rawInput` com `UpdateSlaPolicySchema` (`priority` enum,
- *    `hours` inteiro positivo). Falha → `VALIDATION`.
- * 3. Executa um único `UPDATE sla_policies SET hours = ?, updated_at = now()
+ *    `minutes` inteiro positivo). Falha → `VALIDATION`.
+ * 3. Executa um único `UPDATE sla_policies SET minutes = ?, updated_at = now()
  *    WHERE priority = ?`. Se nenhuma linha for afetada, retorna `NOT_FOUND`
  *    — em operação normal o seed pré-popula as quatro prioridades, então
  *    isso só acontece se alguém apagar a linha manualmente.
@@ -118,26 +118,26 @@ function isUniqueViolation(err: unknown): boolean {
  *    devolva o novo estado na próxima leitura sem aguardar a expiração
  *    natural de 60s (R15.3).
  *
- * Retorna o par `{ priority, hours }` efetivamente persistido para que a
- * Server Action chamadora possa exibir confirmação ao operador.
+ * Retorna o par `{ priority, minutes }` efetivamente persistido para que
+ * a Server Action chamadora possa exibir confirmação ao operador.
  */
 export async function updateSlaPolicy(
     actor: SessionUser,
     rawInput: unknown,
-): Promise<ActionResult<{ priority: Priority; hours: number }>> {
+): Promise<ActionResult<{ priority: Priority; minutes: number }>> {
     if (!canManageSla(actor)) return forbiddenError();
 
     const parsed = UpdateSlaPolicySchema.safeParse(rawInput);
     if (!parsed.success) {
         return validationErrorFromZod(parsed.error.issues[0]);
     }
-    const { priority, hours } = parsed.data;
+    const { priority, minutes } = parsed.data;
 
     const updated = await db
         .update(slaPolicies)
-        .set({ hours, updatedAt: new Date() })
+        .set({ minutes, updatedAt: new Date() })
         .where(eq(slaPolicies.priority, priority))
-        .returning({ priority: slaPolicies.priority, hours: slaPolicies.hours });
+        .returning({ priority: slaPolicies.priority, minutes: slaPolicies.minutes });
 
     if (updated.length === 0) {
         return {
@@ -155,7 +155,7 @@ export async function updateSlaPolicy(
     invalidateSlaPoliciesCache();
 
     const row = updated[0]!;
-    return { ok: true, data: { priority: row.priority, hours: row.hours } };
+    return { ok: true, data: { priority: row.priority, minutes: row.minutes } };
 }
 
 /**

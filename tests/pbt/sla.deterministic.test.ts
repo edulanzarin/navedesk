@@ -2,12 +2,12 @@
  * Property-Based Test — Property 1: SLA determinístico.
  *
  * `computeSlaDeadline` deve ser uma função pura e determinística que respeita
- * exatamente as horas configuradas na política da prioridade escolhida.
+ * exatamente os minutos configurados na política da prioridade escolhida.
  *
- * Para qualquer `now` (Date válido), prioridade e quantidade de horas, o
+ * Para qualquer `now` (Date válido), prioridade e quantidade de minutos, o
  * resultado satisfaz:
  *
- *   d.getTime() === now.getTime() + hours * 3_600_000
+ *   d.getTime() === now.getTime() + minutes * 60_000
  *
  * Além disso, duas chamadas com os mesmos argumentos retornam o mesmo `Date`
  * (determinismo).
@@ -21,7 +21,7 @@ import fc from "fast-check";
 import { computeSlaDeadline } from "@/lib/sla";
 import type { Priority, SlaPolicy } from "@/types/domain";
 
-const MS_PER_HOUR = 3_600_000;
+const MS_PER_MINUTE = 60_000;
 
 /** Gera uma `Priority` válida do domínio. */
 const priorityArb: fc.Arbitrary<Priority> = fc.constantFrom(
@@ -40,20 +40,20 @@ const nowArb: fc.Arbitrary<Date> = fc
     })
     .map((ms) => new Date(ms));
 
-/** Gera horas inteiras de 1 a 720 (~30 dias) — cobre o intervalo prático
- * de qualquer política configurável. */
-const hoursArb: fc.Arbitrary<number> = fc.integer({ min: 1, max: 720 });
+/** Gera minutos inteiros de 1 a 43_200 (~30 dias) — cobre o intervalo
+ * prático de qualquer política configurável (incluindo prazos sub-hora). */
+const minutesArb: fc.Arbitrary<number> = fc.integer({ min: 1, max: 43_200 });
 
-describe("computeSlaDeadline — Property 1: determinístico e respeita horas da política", () => {
-    it("d.getTime() === now.getTime() + hours * 3_600_000 para qualquer (now, priority, hours)", () => {
+describe("computeSlaDeadline — Property 1: determinístico e respeita minutos da política", () => {
+    it("d.getTime() === now.getTime() + minutes * 60_000 para qualquer (now, priority, minutes)", () => {
         fc.assert(
-            fc.property(nowArb, priorityArb, hoursArb, (now, priority, hours) => {
-                const policies: SlaPolicy[] = [{ priority, hours }];
+            fc.property(nowArb, priorityArb, minutesArb, (now, priority, minutes) => {
+                const policies: SlaPolicy[] = [{ priority, minutes }];
 
                 const deadline = computeSlaDeadline(now, priority, policies);
 
                 expect(deadline.getTime()).toBe(
-                    now.getTime() + hours * MS_PER_HOUR,
+                    now.getTime() + minutes * MS_PER_MINUTE,
                 );
             }),
         );
@@ -61,8 +61,8 @@ describe("computeSlaDeadline — Property 1: determinístico e respeita horas da
 
     it("é determinístico: chamadas repetidas com os mesmos argumentos retornam o mesmo resultado", () => {
         fc.assert(
-            fc.property(nowArb, priorityArb, hoursArb, (now, priority, hours) => {
-                const policies: SlaPolicy[] = [{ priority, hours }];
+            fc.property(nowArb, priorityArb, minutesArb, (now, priority, minutes) => {
+                const policies: SlaPolicy[] = [{ priority, minutes }];
 
                 const a = computeSlaDeadline(now, priority, policies);
                 const b = computeSlaDeadline(now, priority, policies);

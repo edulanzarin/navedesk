@@ -67,12 +67,12 @@ async function main(): Promise<void> {
                 { id: "email", label: "E-mail", sub: "Caixa postal e listas", icon: "mail" },
             ]);
 
-            // 3) Políticas de SLA (horas)
+            // 3) Políticas de SLA (em minutos)
             await tx.insert(slaPolicies).values([
-                { priority: "baixa", hours: 48 },
-                { priority: "media", hours: 24 },
-                { priority: "alta", hours: 8 },
-                { priority: "critica", hours: 2 },
+                { priority: "baixa", minutes: 180 },
+                { priority: "media", minutes: 120 },
+                { priority: "alta", minutes: 60 },
+                { priority: "critica", minutes: 30 },
             ]);
 
             // 4) Categorias de KB
@@ -132,10 +132,10 @@ async function main(): Promise<void> {
             const sol1 = userByEmail.get("teste@navecon.net.br")!;
             const sol2 = userByEmail.get("testedois@navecon.net.br")!;
 
-            // 6) Ticket do solicitante Fiscal
-            const slaHours = 24; // prioridade media
+            // 6) Ticket do solicitante Fiscal (prioridade media → 2h)
+            const slaMinutes = 120;
             const now = new Date();
-            const deadline = new Date(now.getTime() + slaHours * 3600 * 1000);
+            const deadline = new Date(now.getTime() + slaMinutes * 60 * 1000);
 
             const ticket1Id = await nextTicketId(
                 "NVD",
@@ -174,7 +174,7 @@ async function main(): Promise<void> {
                 categoryId: "sistema",
                 departmentId: contabilId,
                 requesterId: sol2,
-                slaDeadline: new Date(now.getTime() + 8 * 3600 * 1000),
+                slaDeadline: new Date(now.getTime() + 60 * 60 * 1000), // alta = 60min = 1h
             });
             await tx.insert(ticketEvents).values({
                 ticketId: ticket2Id,

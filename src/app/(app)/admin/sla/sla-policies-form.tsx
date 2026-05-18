@@ -5,12 +5,13 @@
  * Layout:
  *
  * - Um único `Card` agrupa as quatro linhas (uma por prioridade) para
- *   reforçar que "horas de SLA" é uma única configuração logicamente
+ *   reforçar que "minutos de SLA" é uma única configuração logicamente
  *   coerente, ainda que persistida em quatro registros distintos.
  * - Cada linha contém: rótulo da prioridade (`PRIORITY_LABELS_PT`), um
- *   `Input type=number` com `min=1`, e um botão `Salvar` que só fica
- *   habilitado quando o valor digitado difere do atual e é um inteiro
- *   estritamente positivo (R15.2).
+ *   `Input type=number` com `min=1` (valor em **minutos**), o
+ *   equivalente em `h Xmin` ao lado para legibilidade, e um botão
+ *   `Salvar` que só fica habilitado quando o valor digitado difere do
+ *   atual e é um inteiro estritamente positivo (R15.2).
  *
  * Comportamento:
  *
@@ -18,8 +19,8 @@
  *    `initialPolicies` é a base de comparação: o botão Salvar habilita
  *    apenas para linhas com `draft !== initial` e `Number.isInteger > 0`.
  * 2. No submit de uma linha, dispara `updateSlaPolicyAction({ priority,
- *    hours })`. Em sucesso, atualiza o estado base (`baselines`) com o
- *    valor confirmado pelo servidor para que o botão volte ao estado
+ *    minutes })`. Em sucesso, atualiza o estado base (`baselines`) com
+ *    o valor confirmado pelo servidor para que o botão volte ao estado
  *    "sem mudanças pendentes" e exibe um toast de êxito.
  * 3. Em erro (validação Zod no servidor, FORBIDDEN, etc.), exibe um
  *    toast de erro com a mensagem do `ActionResult` — não altera os
@@ -82,32 +83,46 @@ type StateByPriority = Record<Priority, RowState>;
  */
 function buildInitialState(initialPolicies: SlaPolicy[]): StateByPriority {
     const byPriority = new Map<Priority, number>();
-    for (const p of initialPolicies) byPriority.set(p.priority, p.hours);
+    for (const p of initialPolicies) byPriority.set(p.priority, p.minutes);
 
     const out = {} as StateByPriority;
     for (const priority of PRIORITIES) {
-        const hours = byPriority.get(priority) ?? 0;
+        const minutes = byPriority.get(priority) ?? 0;
         out[priority] = {
-            baseline: hours,
-            draft: hours > 0 ? String(hours) : "",
+            baseline: minutes,
+            draft: minutes > 0 ? String(minutes) : "",
         };
     }
     return out;
 }
 
 /**
- * Converte o `draft` em horas válidas (inteiro > 0) ou `null` quando
+ * Converte o `draft` em minutos válidos (inteiro > 0) ou `null` quando
  * inválido. Usar `null` em vez de lançar mantém o handler de submit
  * simples e centraliza a regra "aceita somente inteiros > 0" (R15.2)
  * em um único lugar.
  */
-function parseHours(draft: string): number | null {
+function parseMinutes(draft: string): number | null {
     if (draft.trim().length === 0) return null;
     const n = Number(draft);
     if (!Number.isFinite(n)) return null;
     if (!Number.isInteger(n)) return null;
     if (n <= 0) return null;
     return n;
+}
+
+/**
+ * Formata `minutes` de forma humana: `30min`, `1h`, `2h 30min`, `3h`.
+ * Útil ao lado do input numérico para que o admin enxergue rapidamente
+ * o equivalente em horas/minutos enquanto digita.
+ */
+function formatMinutesLabel(minutes: number): string {
+    if (minutes <= 0) return "—";
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h === 0) return `${m}min`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}min`;
 }
 
 export function SlaPoliciesForm({
@@ -132,12 +147,12 @@ export function SlaPoliciesForm({
     ): Promise<void> {
         e.preventDefault();
         const row = state[priority];
-        const hours = parseHours(row.draft);
-        if (hours === null || hours === row.baseline) return;
+        const minutes = parseMinutes(row.draft);
+        if (minutes === null || minutes === row.baseline) return;
 
         setPendingPriority(priority);
         try {
-            const result = await updateSlaPolicyAction({ priority, hours });
+            const result = await updateSlaPolicyAction({ priority, minutes });
             if (result.ok) {
                 // Confirma o novo baseline com o valor que o servidor
                 // efetivamente persistiu — isso volta o botão ao estado
@@ -145,14 +160,14 @@ export function SlaPoliciesForm({
                 setState((prev) => ({
                     ...prev,
                     [priority]: {
-                        baseline: result.data.hours,
-                        draft: String(result.data.hours),
+                        baseline: result.data.minutes,
+                        draft: String(result.data.minutes),
                     },
                 }));
                 toast({
                     variant: "success",
                     title: "Política de SLA atualizada",
-                    description: `${PRIORITY_LABELS_PT[priority]}: ${result.data.hours}h.`,
+                    description: `${PRIORITY_LABELS_PT[priority]}: ${formatMinutesLabel(result.data.minutes)}.`,
                 });
             } else {
                 toast({
@@ -169,23 +184,28 @@ export function SlaPoliciesForm({
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Horas por prioridade</CardTitle>
+                <CardTitle>Minutos por prioridade</CardTitle>
                 <CardDescription>
                     Tickets já abertos preservam o prazo original. A nova
                     política se aplica apenas a chamados criados após o
-                    salvamento.
+                    salvamento. O valor é em minutos (ex.: 30 = 30 minutos,
+                    120 = 2 horas).
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col divide-y divide-(--line)">
                     {PRIORITIES.map((priority) => {
                         const row = state[priority];
-                        const parsed = parseHours(row.draft);
+                        const parsed = parseMinutes(row.draft);
                         const isValid = parsed !== null;
                         const isDirty =
                             isValid && parsed !== row.baseline;
                         const isPending = pendingPriority === priority;
-                        const inputId = `sla-hours-${priority}`;
+                        const inputId = `sla-minutes-${priority}`;
+                        const previewLabel =
+                            isValid && parsed !== null
+                                ? formatMinutesLabel(parsed)
+                                : null;
 
                         return (
                             <form
@@ -227,7 +247,10 @@ export function SlaPoliciesForm({
                                             id={`${inputId}-hint`}
                                             className="text-sm text-(--ink-3)"
                                         >
-                                            horas
+                                            minutos
+                                            {previewLabel
+                                                ? ` (${previewLabel})`
+                                                : ""}
                                         </span>
                                     </div>
                                 </div>
@@ -235,7 +258,7 @@ export function SlaPoliciesForm({
                                     <span className="text-xs text-(--ink-3)">
                                         Atual:{" "}
                                         {row.baseline > 0
-                                            ? `${row.baseline}h`
+                                            ? formatMinutesLabel(row.baseline)
                                             : "—"}
                                     </span>
                                     <Button

@@ -114,7 +114,7 @@ export async function updateUserRoleAction(
  */
 export async function updateSlaPolicyAction(
     rawInput: unknown,
-): Promise<ActionResult<{ priority: Priority; hours: number }>> {
+): Promise<ActionResult<{ priority: Priority; minutes: number }>> {
     const actor = await requireSession();
     if (!actor) return unauthorized();
 
