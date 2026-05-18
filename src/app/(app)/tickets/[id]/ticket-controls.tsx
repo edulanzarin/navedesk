@@ -451,58 +451,6 @@ export function TicketControls({
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col gap-5">
-                    {showStatus ? (
-                        <ControlSection title="Status">
-                            <Select
-                                value={ticket.status}
-                                onValueChange={handleStatusChange}
-                                disabled={isStatusPending}
-                            >
-                                <SelectTrigger
-                                    aria-label="Alterar status do ticket"
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {/* Status atual sempre presente como opção
-                                        (no-op idempotente) para que o trigger
-                                        consiga refletir o estado corrente. */}
-                                    <SelectItem value={ticket.status}>
-                                        {STATUS_LABELS_PT[ticket.status]}
-                                    </SelectItem>
-                                    {allowedNextStatuses.map((s) => (
-                                        <SelectItem key={s} value={s}>
-                                            {STATUS_LABELS_PT[s]}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </ControlSection>
-                    ) : null}
-
-                    {showPriority ? (
-                        <ControlSection title="Prioridade">
-                            <Select
-                                value={ticket.priority}
-                                onValueChange={handlePriorityChange}
-                                disabled={isPriorityPending}
-                            >
-                                <SelectTrigger
-                                    aria-label="Alterar prioridade do ticket"
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {PRIORITIES.map((p) => (
-                                        <SelectItem key={p} value={p}>
-                                            {PRIORITY_LABELS_PT[p]}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </ControlSection>
-                    ) : null}
-
                     {showAssignmentSection ? (
                         <ControlSection title="Atribuição">
                             {showAssumeButton ? (
@@ -559,6 +507,68 @@ export function TicketControls({
                                     Remover atribuição
                                 </Button>
                             ) : null}
+                        </ControlSection>
+                    ) : null}
+
+                    {showStatus ? (
+                        <ControlSection title="Status">
+                            <Select
+                                value={ticket.status}
+                                onValueChange={handleStatusChange}
+                                disabled={isStatusPending}
+                            >
+                                <SelectTrigger
+                                    aria-label="Alterar status do ticket"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {/* Status atual sempre presente como opção
+                                        (no-op idempotente) para que o trigger
+                                        consiga refletir o estado corrente. */}
+                                    <SelectItem value={ticket.status}>
+                                        {STATUS_LABELS_PT[ticket.status]}
+                                    </SelectItem>
+                                    {allowedNextStatuses.map((s) => (
+                                        <SelectItem key={s} value={s}>
+                                            {STATUS_LABELS_PT[s]}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {/* Aviso de auto-atribuição: técnico sem
+                                responsável vai assumir junto com a mudança
+                                de status. Mantém o usuário ciente do efeito
+                                colateral antes do clique. */}
+                            {currentUser.role === "tecnico" &&
+                                ticket.assigneeId === null ? (
+                                <p className="text-xs text-(--ink-3)">
+                                    Ao alterar o status, o ticket será atribuído a você.
+                                </p>
+                            ) : null}
+                        </ControlSection>
+                    ) : null}
+
+                    {showPriority ? (
+                        <ControlSection title="Prioridade">
+                            <Select
+                                value={ticket.priority}
+                                onValueChange={handlePriorityChange}
+                                disabled={isPriorityPending}
+                            >
+                                <SelectTrigger
+                                    aria-label="Alterar prioridade do ticket"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PRIORITIES.map((p) => (
+                                        <SelectItem key={p} value={p}>
+                                            {PRIORITY_LABELS_PT[p]}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </ControlSection>
                     ) : null}
 

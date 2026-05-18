@@ -385,6 +385,22 @@ export async function changeTicketStatus(
         return { ok: true, data: ticket };
     }
 
+    // Auto-atribuição implícita (R5 — fluxo operacional do técnico).
+    //
+    // Quando um **técnico** muda o status de um ticket que ainda está
+    // sem responsável, é praticamente certo que ele vai assumir o
+    // atendimento. Em vez de exigir dois cliques (Assumir → Mudar
+    // status), atribuímos automaticamente. Admin é exceção: o papel
+    // pode estar apenas reclassificando ou intervindo num ticket que
+    // outro técnico atenderá depois — manter o ticket sem responsável
+    // nesses casos é o comportamento correto.
+    //
+    // O assignee é gravado no mesmo UPDATE da mudança de status (mesma
+    // transação) e um evento `assigned` complementar é registrado para
+    // manter a trilha completa.
+    const willAutoAssign =
+        actor.role === "tecnico" && ticket.assigneeId === null;
+
     let action;
     try {
         action = deriveAction(ticket.status, nextStatus);
@@ -422,10 +438,25 @@ export async function changeTicketStatus(
     if (nextStatus === "fechado") {
         patch.closedAt = now;
     }
+    if (willAutoAssign) {
+        patch.assigneeId = actor.id;
+    }
 
     const updated = await db.transaction(async (tx) => {
         const executor = tx as unknown as DbExecutor;
         const row = ensureUpdated(await updateTicket(executor, ticket.id, patch));
+
+        // Evento de atribuição automática vai antes do status_changed
+        // para refletir a ordem causal: "assumiu, depois mudou status".
+        if (willAutoAssign) {
+            await insertEvent(executor, {
+                ticketId: ticket.id,
+                type: "assigned",
+                actorId: actor.id,
+                fromValue: null,
+                toValue: actor.id,
+            });
+        }
 
         await insertEvent(executor, {
             ticketId: ticket.id,
