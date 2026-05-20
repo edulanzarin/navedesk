@@ -29,6 +29,8 @@
  *   thin wrapper used by `pnpm db:migrate`.
  */
 
+import "./_load-env";
+
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readdir, readFile } from "node:fs/promises";

@@ -31,6 +31,8 @@
  *   thin wrapper used by `pnpm db:seed:if-empty`.
  */
 
+import "./_load-env";
+
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
