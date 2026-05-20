@@ -67,7 +67,10 @@ function enrichRows(
         { label: string; sub: string; icon: string }
     >,
     departmentById: Map<string, { name: string }>,
-    userById: Map<string, { name: string; avatarColor: string }>,
+    userById: Map<
+        string,
+        { name: string; avatarColor: string; avatarUrl: string | null }
+    >,
 ): TicketRowData[] {
     return rows.map((ticket) => {
         const cat = categoryById.get(ticket.categoryId);
@@ -89,9 +92,15 @@ function enrichRows(
             ...(requester?.avatarColor
                 ? { requesterAvatarColor: requester.avatarColor }
                 : {}),
+            ...(requester?.avatarUrl
+                ? { requesterAvatarUrl: requester.avatarUrl }
+                : {}),
             assigneeName: assignee ? assignee.name : null,
             ...(assignee?.avatarColor
                 ? { assigneeAvatarColor: assignee.avatarColor }
+                : {}),
+            ...(assignee?.avatarUrl
+                ? { assigneeAvatarUrl: assignee.avatarUrl }
                 : {}),
             ...(dept?.name ? { departmentLabel: dept.name } : {}),
             slaDeadline: ticket.slaDeadline,
@@ -145,6 +154,7 @@ export default async function AtribuidosPage() {
                     id: users.id,
                     name: users.name,
                     avatarColor: users.avatarColor,
+                    avatarUrl: users.avatarUrl,
                 })
                 .from(users)
                 .where(inArray(users.id, Array.from(userIds)))
@@ -162,7 +172,7 @@ export default async function AtribuidosPage() {
     const userById = new Map(
         userRows.map((u) => [
             u.id,
-            { name: u.name, avatarColor: u.avatarColor },
+            { name: u.name, avatarColor: u.avatarColor, avatarUrl: u.avatarUrl },
         ]),
     );
 
