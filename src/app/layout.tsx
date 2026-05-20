@@ -18,6 +18,13 @@ export const metadata: Metadata = {
         shortcut: LOGO_PATH,
         apple: LOGO_PATH,
     },
+    manifest: "/manifest.json",
+    themeColor: "#5E5CE6",
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: "default",
+        title: BRAND_NAME,
+    },
 };
 
 /**
@@ -44,9 +51,23 @@ export default function RootLayout({
             lang="pt-BR"
             className={`${GeistSans.variable} ${GeistMono.variable}`}
         >
+            <head>
+                <meta name="mobile-web-app-capable" content="yes" />
+            </head>
             <body>
                 {children}
                 <Toaster />
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            if ('serviceWorker' in navigator) {
+                                window.addEventListener('load', () => {
+                                    navigator.serviceWorker.register('/sw.js');
+                                });
+                            }
+                        `,
+                    }}
+                />
             </body>
         </html>
     );
