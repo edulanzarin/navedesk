@@ -184,13 +184,13 @@ export function DataTable<T>({
     return (
         <div
             className={cn(
-                "overflow-x-auto rounded-(--r-3) border border-(--line) bg-(--bg-elev) shadow-(--sh-1)",
+                "overflow-x-auto rounded-(--r-4) border border-hairline border-(--line) bg-(--bg-elev) shadow-(--sh-1)",
                 className,
             )}
         >
             <table className="w-full border-collapse text-sm">
                 <thead>
-                    <tr className="bg-(--bg-sunk) text-(--ink-3)">
+                    <tr className="bg-black/[0.02] text-(--ink-3)">
                         {columns.map((col) => {
                             const widthStyle: React.CSSProperties | undefined =
                                 col.width !== undefined
@@ -219,7 +219,7 @@ export function DataTable<T>({
                                     scope="col"
                                     style={widthStyle}
                                     aria-sort={ariaSort}
-                                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide"
+                                    className="px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] border-b border-hairline border-(--line)"
                                 >
                                     {isSortable ? (
                                         <button
@@ -298,15 +298,15 @@ export function DataTable<T>({
                                             : undefined
                                     }
                                     className={cn(
-                                        "transition-colors",
+                                        "transition-colors duration-[var(--dur-fast)]",
                                         clickable &&
-                                        "cursor-pointer hover:bg-(--bg-sunk) focus-visible:bg-(--bg-sunk) focus-visible:outline-none",
+                                        "cursor-pointer hover:bg-black/[0.02] focus-visible:bg-black/[0.02] focus-visible:outline-none",
                                     )}
                                 >
                                     {columns.map((col) => (
                                         <td
                                             key={col.id}
-                                            className="px-4 py-3 text-sm border-t border-(--line) align-middle text-(--ink)"
+                                            className="px-4 py-3 text-sm border-t border-hairline border-(--line-soft) align-middle text-(--ink)"
                                         >
                                             {col.cell(row)}
                                         </td>

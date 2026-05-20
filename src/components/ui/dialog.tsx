@@ -53,7 +53,7 @@ const DialogOverlay = React.forwardRef<
         <DialogPrimitive.Overlay
             ref={ref}
             className={cn(
-                "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm",
+                "fixed inset-0 z-50 bg-black/30 backdrop-blur-md",
                 "data-[state=open]:animate-fade-in",
                 "data-[state=closed]:animate-fade-out",
                 className,
@@ -76,9 +76,10 @@ const DialogContent = React.forwardRef<
                     // Posicionamento central via translate (combina com o
                     // keyframe `navedesk-zoom-*` que preserva o translate).
                     "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-                    // Caixa: largura, superfície, raio, sombra, padding.
-                    "w-full max-w-lg rounded-(--r-4) bg-(--bg-elev) p-6 shadow-(--sh-pop)",
-                    "border border-(--line)",
+                    // Caixa: largura, vidro, raio, sombra, padding.
+                    "w-full max-w-lg rounded-(--r-5) p-6 shadow-(--sh-pop)",
+                    "bg-white/94 glass-panel-intense",
+                    "border border-hairline border-(--line-glass)",
                     // Animações Radix (data-state=open|closed).
                     "data-[state=open]:animate-zoom-in",
                     "data-[state=closed]:animate-zoom-out",
@@ -92,8 +93,8 @@ const DialogContent = React.forwardRef<
                 <DialogPrimitive.Close
                     className={cn(
                         "absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center",
-                        "rounded-(--r-2) text-(--ink-3) hover:bg-(--bg-sunk) hover:text-(--ink)",
-                        "transition-colors",
+                        "rounded-(--r-2) text-(--ink-3) hover:bg-black/[0.05] hover:text-(--ink)",
+                        "transition-colors duration-[var(--dur-fast)]",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)",
                         "focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg-elev)",
                         "disabled:pointer-events-none",

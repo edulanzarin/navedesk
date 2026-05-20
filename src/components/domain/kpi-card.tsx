@@ -152,7 +152,7 @@ export function KpiCard({
     const DeltaIcon = delta ? (isUp ? TrendingUp : TrendingDown) : null;
 
     return (
-        <Card className={cn("relative overflow-hidden p-5", className)}>
+        <Card className={cn("relative overflow-hidden p-5 hover-lift", className)}>
             <div className="text-xs font-medium text-(--ink-3)">{label}</div>
 
             <div className="mt-2 flex items-baseline gap-1">

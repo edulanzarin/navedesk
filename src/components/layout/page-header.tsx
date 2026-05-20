@@ -51,16 +51,18 @@ export function PageHeader({
     return (
         <header
             className={cn(
-                "mb-6 flex items-start justify-between gap-4",
+                "mb-7 flex items-start justify-between gap-4",
                 className,
             )}
         >
             <div className="min-w-0">
-                <h1 className="text-2xl font-semibold tracking-tight text-(--ink)">
+                <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.02em] text-(--ink)">
                     {title}
                 </h1>
                 {description ? (
-                    <p className="mt-1 text-sm text-(--ink-3)">{description}</p>
+                    <p className="mt-1.5 text-[13.5px] text-(--ink-3)">
+                        {description}
+                    </p>
                 ) : null}
             </div>
             {actions ? (

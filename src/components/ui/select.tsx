@@ -60,15 +60,18 @@ const SelectTrigger = React.forwardRef<
             ref={ref}
             className={cn(
                 // base — espelha Input para coerência visual
-                "flex h-10 w-full items-center justify-between rounded-(--r-3) border border-(--line) bg-(--bg-elev) px-3 text-sm",
+                "flex h-10 w-full items-center justify-between rounded-(--r-3) border border-hairline border-(--line-strong) bg-(--bg-elev) px-3 text-sm",
                 // tinta + placeholder
                 "text-(--ink) data-[placeholder]:text-(--ink-4)",
-                // foco visível (token --accent)
-                "outline-none focus-visible:ring-2 focus-visible:ring-(--accent)",
+                // transição
+                "transition-all duration-[var(--dur-fast)] ease-[var(--ease-out)]",
+                // foco visível — borda + halo de acento
+                "outline-none focus-visible:border-(--accent) focus-visible:shadow-[0_0_0_3px_var(--accent-soft)]",
                 // disabled
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 // ícone
                 "[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-(--ink-3)",
+                "data-[state=open]:[&>svg]:rotate-180 [&>svg]:transition-transform [&>svg]:duration-[var(--dur-fast)]",
                 className,
             )}
             {...props}
@@ -134,10 +137,13 @@ const SelectContent = React.forwardRef<
                 ref={ref}
                 position={position}
                 className={cn(
-                    // base — popover flutuante
-                    "relative z-50 max-h-96 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-(--r-3) border border-(--line) bg-(--bg-elev) p-1 text-(--ink) shadow-(--sh-pop)",
+                    // base — popover flutuante com vidro
+                    "relative z-50 max-h-96 min-w-[var(--radix-select-trigger-width)] overflow-hidden",
+                    "rounded-(--r-3) border border-hairline border-(--line-glass)",
+                    "glass-panel p-1 text-(--ink) shadow-(--sh-pop)",
                     // animação leve (Radix expõe data-state)
-                    "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+                    "data-[state=open]:animate-slide-down",
+                    "data-[state=closed]:animate-fade-out",
                     // posicionamento popper — desloca ligeiramente do trigger
                     position === "popper" &&
                     "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",

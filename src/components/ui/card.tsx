@@ -30,7 +30,8 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
             <div
                 ref={ref}
                 className={cn(
-                    "rounded-(--r-4) bg-(--bg-elev) shadow-(--sh-1) border border-(--line)",
+                    "rounded-(--r-4) bg-(--bg-elev) shadow-(--sh-1) border border-hairline border-(--line)",
+                    "transition-shadow duration-[var(--dur-normal)] ease-[var(--ease-out)]",
                     className,
                 )}
                 {...props}

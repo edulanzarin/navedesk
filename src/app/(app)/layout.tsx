@@ -153,7 +153,7 @@ export default async function AppLayout({
     const counts = await getSidebarCounts(user);
 
     return (
-        <div className="flex h-screen bg-(--bg)">
+        <div className="flex h-screen">
             <Sidebar user={user} counts={counts} />
             <div className="flex min-w-0 flex-1 flex-col">
                 <Topbar
@@ -161,8 +161,8 @@ export default async function AppLayout({
                     user={user}
                     signOutAction={logoutAction}
                 />
-                <main className="min-h-0 flex-1 overflow-auto p-6">
-                    {children}
+                <main className="min-h-0 flex-1 overflow-auto px-7 py-6">
+                    <div className="animate-slide-up">{children}</div>
                 </main>
             </div>
         </div>
