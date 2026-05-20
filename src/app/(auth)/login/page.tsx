@@ -74,20 +74,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             ].join(" ")}
         >
             <CardHeader className="flex-col items-start gap-3 pb-2">
-                <div
-                    aria-hidden="true"
-                    className="flex size-11 items-center justify-center overflow-hidden rounded-[12px] shadow-(--sh-accent)"
-                    style={{ background: "var(--accent-gradient)" }}
-                >
-                    <Image
-                        src={LOGO_PATH}
-                        alt=""
-                        width={44}
-                        height={44}
-                        className="size-10 object-contain"
-                        priority
-                    />
-                </div>
+                <Image
+                    src={LOGO_PATH}
+                    alt=""
+                    width={44}
+                    height={44}
+                    className="size-11 object-contain"
+                    priority
+                />
                 <div>
                     <CardTitle className="text-[22px] font-semibold tracking-[-0.025em]">
                         Entrar no {BRAND_NAME}
