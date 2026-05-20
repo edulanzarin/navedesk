@@ -134,18 +134,27 @@ function DetailRow({
  * Bloco compacto que exibe o avatar de um usuário ao lado do nome.
  * Reutiliza o primitivo `Avatar`, que aceita uma cor de fundo
  * hexadecimal vinda do `users.avatar_color` para que cada pessoa tenha
- * uma identidade visual estável em toda a aplicação.
+ * uma identidade visual estável em toda a aplicação. Quando o usuário
+ * tem foto (`avatarUrl`), ela é exibida; caso contrário cai no
+ * fallback de iniciais sobre a cor.
  */
 function UserBadge({
     name,
     avatarColor,
+    avatarUrl,
 }: {
     name: string;
     avatarColor?: string;
+    avatarUrl?: string | null;
 }) {
     return (
         <span className="inline-flex items-center gap-2">
-            <Avatar name={name} color={avatarColor} size="sm" />
+            <Avatar
+                name={name}
+                color={avatarColor}
+                {...(avatarUrl ? { src: avatarUrl } : {})}
+                size="sm"
+            />
             <span className="truncate text-(--ink)">{name}</span>
         </span>
     );
@@ -263,6 +272,7 @@ export default async function TicketDetailPage({
             id: u.id,
             name: u.name,
             avatarColor: u.avatarColor,
+            avatarUrl: u.avatarUrl,
         };
         actorNamesById[u.id] = u.name;
     }
@@ -271,6 +281,7 @@ export default async function TicketDetailPage({
             id: requester.id,
             name: requester.name,
             avatarColor: requester.avatarColor,
+            avatarUrl: requester.avatarUrl,
         };
         actorNamesById[requester.id] = requester.name;
     }
@@ -279,6 +290,7 @@ export default async function TicketDetailPage({
             id: assignee.id,
             name: assignee.name,
             avatarColor: assignee.avatarColor,
+            avatarUrl: assignee.avatarUrl,
         };
         actorNamesById[assignee.id] = assignee.name;
     }
@@ -402,6 +414,7 @@ export default async function TicketDetailPage({
                                         <UserBadge
                                             name={requesterName}
                                             avatarColor={requester.avatarColor}
+                                            avatarUrl={requester.avatarUrl}
                                         />
                                     ) : (
                                         <span className="text-(--ink-4)">
@@ -414,6 +427,7 @@ export default async function TicketDetailPage({
                                         <UserBadge
                                             name={assigneeName}
                                             avatarColor={assignee.avatarColor}
+                                            avatarUrl={assignee.avatarUrl}
                                         />
                                     ) : (
                                         <span className="text-(--ink-4)">

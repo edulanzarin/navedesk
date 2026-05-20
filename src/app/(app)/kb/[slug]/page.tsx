@@ -299,6 +299,9 @@ export default async function KbArticlePage({ params }: KbArticlePageProps) {
                                         {...(author?.avatarColor
                                             ? { color: author.avatarColor }
                                             : {})}
+                                        {...(author?.avatarUrl
+                                            ? { src: author.avatarUrl }
+                                            : {})}
                                         size="sm"
                                     />
                                     <span className="truncate text-sm text-(--ink)">

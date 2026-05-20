@@ -65,10 +65,14 @@ export interface TicketRowData {
     requesterName: string;
     /** Cor de fundo do avatar do solicitante (hex). */
     requesterAvatarColor?: string;
+    /** URL da foto do solicitante; preferida ao fallback de iniciais. */
+    requesterAvatarUrl?: string;
     /** Nome do responsável; `null` quando o ticket não está atribuído. */
     assigneeName: string | null;
     /** Cor de fundo do avatar do responsável (hex). */
     assigneeAvatarColor?: string;
+    /** URL da foto do responsável; preferida ao fallback de iniciais. */
+    assigneeAvatarUrl?: string;
     /** Departamento exibido sob o título como meta. */
     departmentLabel?: string;
     /** Prazo do SLA. */
@@ -201,6 +205,9 @@ export function ticketColumns({
                         <Avatar
                             name={row.assigneeName}
                             color={row.assigneeAvatarColor}
+                            {...(row.assigneeAvatarUrl
+                                ? { src: row.assigneeAvatarUrl }
+                                : {})}
                             size="sm"
                         />
                         <span className="truncate text-sm text-(--ink-2)">

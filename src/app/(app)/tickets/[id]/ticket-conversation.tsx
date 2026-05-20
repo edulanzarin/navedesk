@@ -74,13 +74,14 @@ export interface ConversationMessage {
 
 /**
  * Resumo do autor de uma mensagem — basta o necessário para o
- * cabeçalho de cada bolha (nome + cor de avatar). O servidor monta
- * este mapa em uma única consulta.
+ * cabeçalho de cada bolha (nome + cor + foto opcional). O servidor
+ * monta este mapa em uma única consulta.
  */
 export interface ConversationAuthor {
     id: string;
     name: string;
     avatarColor: string;
+    avatarUrl: string | null;
 }
 
 export interface TicketConversationProps {
@@ -140,6 +141,7 @@ function MessageBubble({
 }) {
     const authorName = author?.name ?? "Usuário removido";
     const authorColor = author?.avatarColor;
+    const authorUrl = author?.avatarUrl;
 
     return (
         <article
@@ -157,6 +159,7 @@ function MessageBubble({
             <Avatar
                 name={authorName}
                 {...(authorColor ? { color: authorColor } : {})}
+                {...(authorUrl ? { src: authorUrl } : {})}
                 size="md"
             />
             <div className="min-w-0 flex-1">
