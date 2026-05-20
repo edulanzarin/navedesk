@@ -313,27 +313,14 @@ export function Sidebar({ user, counts, active }: SidebarProps) {
         >
             {/* Cabeçalho da marca */}
             <div className="flex h-16 items-center gap-2.5 border-b border-hairline border-(--line-soft) px-4">
-                <div
-                    aria-hidden="true"
-                    className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-(--r-2) shadow-(--sh-accent)"
-                    style={{
-                        background: "var(--accent-gradient)",
-                    }}
-                >
-                    {/* Logo carregado de `public/`. `next/image` cuida do
-                        sizing responsivo e mantém a imagem nítida em
-                        telas HiDPI. O fundo é um gradient de acento
-                        (Tahoe-style) com sombra colorida para dar a
-                        impressão de "ícone de app". */}
-                    <Image
-                        src={LOGO_PATH}
-                        alt=""
-                        width={32}
-                        height={32}
-                        className="size-8 object-contain"
-                        priority
-                    />
-                </div>
+                <Image
+                    src={LOGO_PATH}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="size-8 shrink-0 object-contain"
+                    priority
+                />
                 <div className="min-w-0">
                     <div className="truncate text-sm font-semibold tracking-tight text-(--ink)">
                         {BRAND_NAME}
