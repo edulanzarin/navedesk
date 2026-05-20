@@ -29,7 +29,7 @@
  * caminho crítico da operação.
  */
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { db, type Database } from "@/db/client";
 import {
@@ -411,3 +411,64 @@ const PRIORITY_LABELS_PT: Record<Priority, string> = {
     alta: "Alta",
     critica: "Crítica",
 };
+
+
+/**
+ * Notifica usuários explicitamente mencionados (`@nome`) em uma
+ * mensagem. Diferente de `notifyMessagePosted`, que notifica a
+ * contraparte da conversa, aqui notificamos qualquer pessoa
+ * referenciada — independente do papel ou de envolvimento prévio
+ * com o ticket. Solicitantes só recebem menção em mensagens
+ * **públicas** (notas internas continuam restritas).
+ */
+export async function notifyMessageMentions(
+    executor: DbExecutor,
+    ticket: Ticket,
+    actor: SessionUser,
+    isInternal: boolean,
+    mentionedUserIds: readonly string[],
+): Promise<void> {
+    if (mentionedUserIds.length === 0) return;
+
+    // Remove o ator (auto-menção não notifica) e deduplica.
+    const candidates = new Set<string>();
+    for (const id of mentionedUserIds) {
+        if (id === actor.id) continue;
+        candidates.add(id);
+    }
+    if (candidates.size === 0) return;
+
+    let targets = Array.from(candidates);
+
+    // Para notas internas, retira solicitantes mencionados — eles não
+    // têm visibilidade da mensagem em si (R7.4) e receberiam uma
+    // notificação enganosa que não levaria a lugar nenhum.
+    if (isInternal) {
+        const rows = await executor
+            .select({ id: users.id, role: users.role })
+            .from(users)
+            .where(inArray(users.id, targets));
+        targets = rows
+            .filter((r) => r.role !== "solicitante")
+            .map((r) => r.id);
+    }
+
+    if (targets.length === 0) return;
+
+    const type = isInternal ? "message_internal" : "message_public";
+    const title = `${ticket.id}: você foi mencionado`;
+    const body = `${actor.name} mencionou você em ${
+        isInternal ? "uma nota interna" : "uma mensagem"
+    }.`;
+
+    const rows: NotificationInsert[] = targets.map((userId) => ({
+        userId,
+        ticketId: ticket.id,
+        type,
+        title,
+        body,
+        actorId: actor.id,
+    }));
+
+    await insertAndBroadcast(executor, rows);
+}

@@ -132,6 +132,35 @@ const BODY_MAX_LENGTH = 5000;
  * mantemos o layout uniforme em vez de espelhar o estilo "chat" para
  * que o histórico fique mais próximo de um log de atendimento.
  */
+/**
+ * Renderiza o corpo da mensagem destacando tokens `@nome`. O React
+ * escapa automaticamente cada string fragmentada — não criamos HTML
+ * arbitrário, então é seguro contra XSS.
+ */
+function renderBodyWithMentions(body: string): React.ReactNode {
+    const re = /@([a-zA-ZÀ-ÿ0-9_]+(?:\.[a-zA-ZÀ-ÿ0-9_]+)?)/g;
+    const out: React.ReactNode[] = [];
+    let last = 0;
+    let match: RegExpExecArray | null;
+    let key = 0;
+    while ((match = re.exec(body)) !== null) {
+        if (match.index > last) {
+            out.push(body.slice(last, match.index));
+        }
+        out.push(
+            <span
+                key={`m-${key++}`}
+                className="rounded-(--r-1) bg-(--accent-soft) px-1 font-medium text-(--accent)"
+            >
+                {match[0]}
+            </span>,
+        );
+        last = match.index + match[0].length;
+    }
+    if (last < body.length) out.push(body.slice(last));
+    return out;
+}
+
 function MessageBubble({
     message,
     author,
@@ -164,7 +193,7 @@ function MessageBubble({
             />
             <div className="min-w-0 flex-1">
                 <header className="mb-1 flex flex-wrap items-center gap-2">
-                    <span className="truncate text-sm font-medium text-(--ink)">
+                    <span className="min-w-0 max-w-full truncate text-sm font-medium text-(--ink)" title={authorName}>
                         {authorName}
                     </span>
                     {message.isInternal ? (
@@ -183,10 +212,11 @@ function MessageBubble({
                   esta entrega, preservamos quebras de linha com
                   `whitespace-pre-wrap` e renderizamos texto puro,
                   inerte do ponto de vista de XSS porque React escapa
-                  automaticamente o conteúdo.
+                  automaticamente o conteúdo. Tokens `@nome` são
+                  destacados visualmente.
                 */}
                 <div className="whitespace-pre-wrap break-words text-sm text-(--ink-2)">
-                    {message.body}
+                    {renderBodyWithMentions(message.body)}
                 </div>
             </div>
         </article>

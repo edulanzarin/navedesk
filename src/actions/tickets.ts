@@ -275,3 +275,35 @@ export async function exportTicketsAction(
 
     return exportTickets(actor, rawInput);
 }
+
+
+/**
+ * Aplica em lote a mesma mudança a vários tickets (apenas admin).
+ * Útil para reclassificações em massa (categoria errada, mudança de
+ * departamento, etc.). Cada ticket é atualizado em transação isolada
+ * — falhas pontuais são contadas em `failed` sem abortar o lote.
+ */
+export async function bulkUpdateTicketsAction(
+    ticketIds: string[],
+    patch: {
+        categoryId?: string;
+        departmentId?: string;
+        priority?: Priority;
+        assigneeId?: string | null;
+        status?: TicketStatus;
+    },
+): Promise<ActionResult<{ updated: number; failed: number }>> {
+    const actor = await getActor();
+    if (!actor) return unauthorized<{ updated: number; failed: number }>();
+
+    const result = await ticketsService.bulkUpdateTickets(
+        actor,
+        ticketIds,
+        patch,
+    );
+    if (result.ok) {
+        revalidatePath("/tickets");
+        revalidatePath("/dashboard");
+    }
+    return result;
+}

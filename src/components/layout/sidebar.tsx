@@ -45,6 +45,7 @@ import {
     Bell,
     Building2,
     Cog,
+    FileText,
     Inbox,
     LayoutDashboard,
     Library,
@@ -200,6 +201,14 @@ const ENTRIES: ReadonlyArray<SidebarEntry> = [
         icon: Tag,
         roles: ["admin"],
         match: ["/admin/categorias"],
+    },
+    {
+        kind: "item",
+        label: "Modelos",
+        href: "/admin/templates",
+        icon: FileText,
+        roles: ["admin"],
+        match: ["/admin/templates"],
     },
     {
         kind: "item",

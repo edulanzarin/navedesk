@@ -296,14 +296,14 @@ export function UsersManagement({
             header: "Nome",
             sortKey: "name",
             cell: (u) => (
-                <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-2.5">
                     <Avatar
                         name={u.name}
                         size="sm"
                         {...(u.avatarColor ? { color: u.avatarColor } : {})}
                         {...(u.avatarUrl ? { src: u.avatarUrl } : {})}
                     />
-                    <span className="font-medium text-(--ink)">
+                    <span className="min-w-0 truncate font-medium text-(--ink)" title={u.name}>
                         {u.name}
                         {u.id === currentUserId ? (
                             <span className="ml-2 text-xs text-(--ink-3)">

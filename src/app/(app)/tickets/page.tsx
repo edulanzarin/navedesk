@@ -49,6 +49,7 @@ import {
     type ListFilters,
     type TicketListCursor,
 } from "@/db/repositories/tickets.repo";
+import { listForUser as listSavedFiltersForUser } from "@/db/repositories/saved-filters.repo";
 import { users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import {
@@ -65,6 +66,7 @@ import {
 import type { SessionUser, Ticket } from "@/types/domain";
 
 import { TicketsFilterBar } from "./tickets-filter-bar";
+import { SavedFiltersBar } from "./saved-filters-bar";
 
 /**
  * Em Next 15 `searchParams` é uma `Promise` que precisa ser `await`-ada
@@ -328,11 +330,12 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
     // Leituras estáveis em paralelo: políticas de SLA, taxonomias e a
     // própria página de tickets. Cada uma é cacheada em memória (TTL 60s)
     // pelo `reads.service` para reduzir latência em navegações sucessivas.
-    const [policies, categories, departments, page] = await Promise.all([
+    const [policies, categories, departments, page, savedFilters] = await Promise.all([
         getAllSlaPolicies(),
         listCategories(),
         listDepartments(),
         listWithFilters(db, user, filters),
+        listSavedFiltersForUser(db, user.id),
     ]);
 
     // Resolve nomes de solicitantes e responsáveis em uma única query
@@ -402,7 +405,32 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
                 canFilterByAssignee={user.role !== "solicitante"}
             />
 
-            <TicketsDataTable rows={rows} policies={policies} />
+            <SavedFiltersBar
+                filters={savedFilters.map((f) => ({
+                    id: f.id,
+                    name: f.name,
+                    queryString: f.queryString,
+                }))}
+            />
+
+            <TicketsDataTable
+                rows={rows}
+                policies={policies}
+                {...(user.role === "admin"
+                    ? {
+                        bulkContext: {
+                            categories: categories.map((c) => ({
+                                id: c.id,
+                                label: c.label,
+                            })),
+                            departments: departments.map((d) => ({
+                                id: d.id,
+                                label: d.name,
+                            })),
+                        },
+                    }
+                    : {})}
+            />
 
             {nextHref ? (
                 <div className="mt-4 flex justify-end">

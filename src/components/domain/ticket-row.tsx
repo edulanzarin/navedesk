@@ -200,8 +200,8 @@ export function ticketColumns({
             header: "Atribuído",
             width: 140,
             cell: (row) =>
-                row.assigneeName !== null ? (
-                    <div className="flex items-center gap-2">
+                {row.assigneeName !== null ? (
+                    <div className="flex min-w-0 items-center gap-2">
                         <Avatar
                             name={row.assigneeName}
                             color={row.assigneeAvatarColor}
@@ -210,7 +210,7 @@ export function ticketColumns({
                                 : {})}
                             size="sm"
                         />
-                        <span className="truncate text-sm text-(--ink-2)">
+                        <span className="min-w-0 truncate text-sm text-(--ink-2)" title={row.assigneeName}>
                             {firstName(row.assigneeName)}
                         </span>
                     </div>

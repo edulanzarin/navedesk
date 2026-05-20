@@ -148,14 +148,16 @@ function UserBadge({
     avatarUrl?: string | null;
 }) {
     return (
-        <span className="inline-flex items-center gap-2">
+        <span className="flex min-w-0 items-center gap-2">
             <Avatar
                 name={name}
                 color={avatarColor}
                 {...(avatarUrl ? { src: avatarUrl } : {})}
                 size="sm"
             />
-            <span className="truncate text-(--ink)">{name}</span>
+            <span className="min-w-0 truncate text-(--ink)" title={name}>
+                {name}
+            </span>
         </span>
     );
 }

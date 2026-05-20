@@ -947,3 +947,127 @@ async function performUnassign(
 
     return { ok: true, data: updated };
 }
+
+
+/**
+ * Aplica em lote uma mesma mudança a vários tickets (uso administrativo).
+ *
+ * Suporta atualizações comuns de:
+ * - `categoryId`
+ * - `departmentId`
+ * - `priority`
+ * - `assigneeId` (incluindo `null` para desatribuir)
+ * - `status` (limitado a transições válidas — irregulares são puladas
+ *   sem abortar o lote)
+ *
+ * Restrito a admins por questão de segurança operacional. Não roda
+ * tudo em uma única transação gigante (cada ticket vira uma transação
+ * dedicada) para que falhas pontuais não revertam o lote inteiro —
+ * apenas o ticket problemático é pulado, e o caller recebe o resumo
+ * `{ ok: number, failed: number }`.
+ *
+ * Validates: R5, R12.
+ */
+export async function bulkUpdateTickets(
+    actor: SessionUser,
+    ticketIds: readonly string[],
+    patch: {
+        categoryId?: string;
+        departmentId?: string;
+        priority?: Priority;
+        assigneeId?: string | null;
+        status?: TicketStatus;
+    },
+): Promise<ActionResult<{ updated: number; failed: number }>> {
+    if (actor.role !== "admin") {
+        return forbiddenResult("Apenas administradores podem fazer ações em lote.");
+    }
+    if (ticketIds.length === 0) {
+        return { ok: true, data: { updated: 0, failed: 0 } };
+    }
+    if (ticketIds.length > 200) {
+        return {
+            ok: false,
+            error: {
+                code: "TOO_MANY",
+                message: "Limite de 200 tickets por operação em lote.",
+            },
+        };
+    }
+
+    let updated = 0;
+    let failed = 0;
+
+    // Cada ticket roda em sua própria transação. Usamos as funções de
+    // serviço já existentes para preservar trilha de auditoria,
+    // máquina de estados e fan-out de notificações sem reinventar
+    // tudo. Erros pontuais não abortam o lote.
+    for (const ticketId of ticketIds) {
+        try {
+            if (patch.status !== undefined) {
+                const result = await changeTicketStatus(
+                    actor,
+                    ticketId,
+                    patch.status,
+                );
+                if (!result.ok) {
+                    failed++;
+                    continue;
+                }
+            }
+            if (patch.priority !== undefined) {
+                const result = await changeTicketPriority(
+                    actor,
+                    ticketId,
+                    patch.priority,
+                );
+                if (!result.ok) {
+                    failed++;
+                    continue;
+                }
+            }
+            if (patch.assigneeId !== undefined) {
+                const result = await assignTicket(
+                    actor,
+                    ticketId,
+                    patch.assigneeId,
+                );
+                if (!result.ok) {
+                    failed++;
+                    continue;
+                }
+            }
+            // Categoria e departamento são UPDATEs simples sem máquina
+            // de estados. Fazemos direto via repositório dentro de uma
+            // transação para preservar `updatedAt`.
+            if (
+                patch.categoryId !== undefined ||
+                patch.departmentId !== undefined
+            ) {
+                const ticket = await findVisibleForUser(db, actor, ticketId);
+                if (!ticket) {
+                    failed++;
+                    continue;
+                }
+                const now = new Date();
+                const fieldPatch: TicketUpdate = { updatedAt: now };
+                if (patch.categoryId !== undefined) {
+                    fieldPatch.categoryId = patch.categoryId;
+                }
+                if (patch.departmentId !== undefined) {
+                    fieldPatch.departmentId = patch.departmentId;
+                }
+                await db.transaction(async (tx) => {
+                    const executor = tx as unknown as DbExecutor;
+                    await updateTicket(executor, ticket.id, fieldPatch);
+                });
+            }
+            updated++;
+        } catch (err) {
+            console.error(`[bulkUpdate] ticket ${ticketId}:`, err);
+            failed++;
+        }
+    }
+
+    return { ok: true, data: { updated, failed } };
+}

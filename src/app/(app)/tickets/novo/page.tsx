@@ -33,6 +33,8 @@
 import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { db } from "@/db/client";
+import { listActiveTemplates } from "@/db/repositories/ticket-templates.repo";
 import { auth } from "@/lib/auth";
 import { listCategories, listDepartments } from "@/services/reads.service";
 import type { SessionUser } from "@/types/domain";
@@ -56,9 +58,10 @@ export default async function NewTicketPage() {
     // inativas são filtradas aqui — `listCategories()` devolve o
     // catálogo completo para a UI administrativa, e cada caller decide
     // o subset que faz sentido (R15.6).
-    const [allCategories, departments] = await Promise.all([
+    const [allCategories, departments, templates] = await Promise.all([
         listCategories(),
         listDepartments(),
+        listActiveTemplates(db),
     ]);
     const categories = allCategories.filter((c) => c.active);
 
@@ -68,7 +71,19 @@ export default async function NewTicketPage() {
                 title="Novo ticket"
                 description="Abra um chamado para o time de TI"
             />
-            <NewTicketForm categories={categories} departments={departments} />
+            <NewTicketForm
+                categories={categories}
+                departments={departments}
+                templates={templates.map((t) => ({
+                    id: t.id,
+                    name: t.name,
+                    title: t.title,
+                    description: t.description,
+                    priority: t.priority,
+                    categoryId: t.categoryId,
+                    departmentId: t.departmentId,
+                }))}
+            />
         </div>
     );
 }

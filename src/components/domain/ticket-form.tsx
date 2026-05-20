@@ -132,6 +132,12 @@ export interface TicketFormProps {
      */
     allowAssign?: boolean;
     /**
+     * Valores iniciais opcionais que sobrescrevem os defaults do
+     * formulário quando mudam (ex.: aplicar um template). O componente
+     * faz `reset(initialValues)` cada vez que a referência muda.
+     */
+    initialValues?: Partial<TicketFormValues>;
+    /**
      * Callback executado no submit válido. Recebe os valores tipados —
      * incluindo `assigneeId` quando preenchido. A página decide como
      * orquestrar `createTicketAction` e, opcionalmente, `assignTicketAction`.
@@ -184,6 +190,7 @@ export function TicketForm({
     departments,
     assignees = [],
     allowAssign = false,
+    initialValues,
     onSubmit,
 }: TicketFormProps): React.ReactElement {
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -198,6 +205,7 @@ export function TicketForm({
         watch,
         setValue,
         getValues,
+        reset,
         formState: { errors, isSubmitting },
     } = useForm<TicketFormValues>({
         // O schema é uma extensão de `CreateTicketSchema`. O cast garante
@@ -214,6 +222,21 @@ export function TicketForm({
             assigneeId: undefined,
         },
     });
+
+    // Quando o consumidor passa `initialValues` (ex.: aplicação de um
+    // template), aplicamos via `reset` mantendo o restante intacto.
+    React.useEffect(() => {
+        if (!initialValues) return;
+        reset({
+            title: initialValues.title ?? "",
+            description: initialValues.description ?? "",
+            categoryId: initialValues.categoryId ?? "",
+            departmentId: initialValues.departmentId ?? "",
+            priority: initialValues.priority ?? "media",
+            attachments: initialValues.attachments ?? [],
+            assigneeId: initialValues.assigneeId,
+        });
+    }, [initialValues, reset]);
 
     // Observa apenas os campos que precisamos espelhar no DOM como
     // controles "controlados" (Selects do Radix). Os demais (`title`,

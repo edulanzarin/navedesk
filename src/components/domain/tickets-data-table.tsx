@@ -1,29 +1,11 @@
 /**
  * `TicketsDataTable` — wrapper Client Component em torno do
- * primitivo `DataTable<TicketRowData>`.
+ * primitivo `DataTable<TicketRowData>` com seleção em lote opcional.
  *
- * Por que existir? `DataTable` é um Client Component genérico e suas
- * colunas (`columns`) carregam a função `cell: (row) => ReactNode` —
- * funções não atravessam a fronteira RSC. Construir o `columns` (e o
- * `rowKey`) dentro de um Client Component resolve isso sem expor o
- * `DataTable` a fetch de domínio.
- *
- * Contrato:
- *
- * - O Server Component prepara `rows: TicketRowData[]` (já com
- *   categoria, departamento, solicitante, responsável resolvidos) e
- *   `policies: SlaPolicy[]`. Ambos são serializáveis e atravessam o
- *   wire RSC sem ajuste manual.
- * - Este wrapper monta as colunas localmente via `ticketColumns` e
- *   passa para o `DataTable`. Mantém o domínio (`StatusBadge`,
- *   `PriorityPill`, `SlaMeter`, …) co-localizado com a tabela e isola
- *   as funções não-serializáveis no cliente.
- *
- * Pretende ser reutilizado por `/tickets`, `/tickets/atribuidos` e
- * qualquer outra listagem de tickets futura — basta passar as linhas
- * já enriquecidas e as políticas vigentes.
- *
- * Validates: R11.5, R19.4, R19.7
+ * Quando `bulkActions` é fornecido (apenas admin via prop), prepende
+ * uma coluna de checkboxes e renderiza uma toolbar contextual que
+ * aparece quando há linhas selecionadas. As ações são entregues via
+ * Server Action e refrescam a página em sucesso.
  */
 
 "use client";
@@ -32,21 +14,50 @@ import * as React from "react";
 
 import { useRouter } from "next/navigation";
 
-import { DataTable } from "@/components/ui/data-table";
+import { Tag, UserCog, Building2, Trash2, X } from "lucide-react";
+
+import { bulkUpdateTicketsAction } from "@/actions/tickets";
+import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+    Dropdown,
+    DropdownContent,
+    DropdownItem,
+    DropdownLabel,
+    DropdownSeparator,
+    DropdownTrigger,
+} from "@/components/ui/dropdown";
+import { toast } from "@/components/ui/use-toast";
 import {
     ticketColumns,
     type TicketRowData,
 } from "@/components/domain/ticket-row";
-import type { SlaPolicy } from "@/types/domain";
+import { cn } from "@/lib/cn";
+import { PRIORITIES, PRIORITY_LABELS_PT } from "@/lib/constants";
+import { getErrorMessage } from "@/lib/error-messages";
+import type { Priority, SlaPolicy } from "@/types/domain";
+
+export interface TicketsBulkOption {
+    id: string;
+    label: string;
+}
 
 export interface TicketsDataTableProps {
     /** Linhas já enriquecidas pelo Server Component. */
     rows: TicketRowData[];
     /** Políticas de SLA vigentes (necessárias ao `SlaMeter`). */
     policies: SlaPolicy[];
+    /**
+     * Quando fornecido, ativa a coluna de checkboxes e expõe a toolbar
+     * de ações em lote (apenas admin recebe esse prop). Categorias e
+     * departamentos vêm pré-resolvidos para popular os menus.
+     */
+    bulkContext?: {
+        categories: TicketsBulkOption[];
+        departments: TicketsBulkOption[];
+    };
 }
 
-/** Extrator estável de chave; mantido fora do componente para não recriar a função a cada render. */
 function rowKey(row: TicketRowData): string {
     return row.id;
 }
@@ -54,26 +65,78 @@ function rowKey(row: TicketRowData): string {
 export function TicketsDataTable({
     rows,
     policies,
+    bulkContext,
 }: TicketsDataTableProps): React.ReactElement {
     const router = useRouter();
+    const [selected, setSelected] = React.useState<Set<string>>(new Set());
+    const [isPending, startTransition] = React.useTransition();
 
-    // `useMemo` recompõe as colunas apenas quando `policies` muda —
-    // navegações com filtros novos preservam a referência, evitando
-    // re-renders desnecessários do `DataTable`.
-    const columns = React.useMemo(
+    // Reseta seleção quando as linhas mudam (paginação, filtros).
+    React.useEffect(() => {
+        setSelected(new Set());
+    }, [rows]);
+
+    const allOnPageSelected =
+        rows.length > 0 && rows.every((r) => selected.has(r.id));
+
+    function toggleAll(): void {
+        setSelected((prev) => {
+            if (allOnPageSelected) return new Set();
+            const next = new Set(prev);
+            for (const r of rows) next.add(r.id);
+            return next;
+        });
+    }
+
+    function toggleOne(id: string): void {
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
+
+    const baseColumns = React.useMemo(
         () => ticketColumns({ policies }),
         [policies],
     );
 
-    /**
-     * Click na linha → abre o detalhe do ticket. `router.push` mantém
-     * a navegação no client; o `<DataTable>` já cuida de Enter/Space
-     * (`role="button"` + `tabIndex=0`) para acessibilidade por teclado.
-     *
-     * Mantemos a função estável via `useCallback` para que o memo do
-     * `DataTable` (caso seja adicionado no futuro) consiga reconciliar
-     * sem disparar re-renders supérfluos.
-     */
+    const columns = React.useMemo<DataTableColumn<TicketRowData>[]>(() => {
+        if (!bulkContext) return baseColumns;
+        // Coluna de checkbox prepended.
+        const checkboxCol: DataTableColumn<TicketRowData> = {
+            id: "select",
+            header: (
+                <input
+                    type="checkbox"
+                    aria-label="Selecionar todos da página"
+                    checked={allOnPageSelected}
+                    onChange={toggleAll}
+                    onClick={(e) => e.stopPropagation()}
+                    className="size-4 rounded border-(--line) text-(--accent) focus-visible:ring-2 focus-visible:ring-(--accent)"
+                />
+            ),
+            width: 40,
+            cell: (row) => (
+                <input
+                    type="checkbox"
+                    aria-label={`Selecionar ${row.id}`}
+                    checked={selected.has(row.id)}
+                    onChange={(e) => {
+                        e.stopPropagation();
+                        toggleOne(row.id);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="size-4 rounded border-(--line) text-(--accent) focus-visible:ring-2 focus-visible:ring-(--accent)"
+                />
+            ),
+        };
+        return [checkboxCol, ...baseColumns];
+        // `selected` muda muito (a cada toggle), então recriamos as
+        // colunas — DataTable é leve o bastante pra suportar.
+    }, [bulkContext, baseColumns, allOnPageSelected, selected]);
+
     const handleRowClick = React.useCallback(
         (row: TicketRowData) => {
             router.push(`/tickets/${row.id}`);
@@ -81,12 +144,155 @@ export function TicketsDataTable({
         [router],
     );
 
+    async function applyBulk(patch: {
+        categoryId?: string;
+        departmentId?: string;
+        priority?: Priority;
+    }): Promise<void> {
+        const ids = Array.from(selected);
+        if (ids.length === 0) return;
+        startTransition(async () => {
+            const result = await bulkUpdateTicketsAction(ids, patch);
+            if (result.ok) {
+                toast({
+                    variant: "success",
+                    title: `${result.data.updated} ticket(s) atualizado(s)`,
+                    description:
+                        result.data.failed > 0
+                            ? `${result.data.failed} falharam.`
+                            : undefined,
+                });
+                setSelected(new Set());
+                router.refresh();
+            } else {
+                toast({
+                    variant: "error",
+                    title: "Falha na ação em lote",
+                    description: getErrorMessage(result.error),
+                });
+            }
+        });
+    }
+
     return (
-        <DataTable<TicketRowData>
-            columns={columns}
-            rows={rows}
-            rowKey={rowKey}
-            onRowClick={handleRowClick}
-        />
+        <div className="flex flex-col gap-3">
+            {bulkContext && selected.size > 0 ? (
+                <div
+                    className={cn(
+                        "flex flex-wrap items-center gap-3 rounded-(--r-3) border border-hairline border-(--accent)",
+                        "bg-(--accent-soft) px-3 py-2 text-sm",
+                    )}
+                >
+                    <span className="font-medium text-(--accent)">
+                        {selected.size} selecionado(s)
+                    </span>
+                    <span className="flex-1" />
+
+                    <Dropdown>
+                        <DropdownTrigger asChild>
+                            <Button
+                                size="sm"
+                                variant="default"
+                                icon={<Tag />}
+                                disabled={isPending}
+                            >
+                                Categoria
+                            </Button>
+                        </DropdownTrigger>
+                        <DropdownContent align="end">
+                            <DropdownLabel>Mover para</DropdownLabel>
+                            <DropdownSeparator />
+                            {bulkContext.categories.map((c) => (
+                                <DropdownItem
+                                    key={c.id}
+                                    onSelect={() =>
+                                        void applyBulk({ categoryId: c.id })
+                                    }
+                                >
+                                    {c.label}
+                                </DropdownItem>
+                            ))}
+                        </DropdownContent>
+                    </Dropdown>
+
+                    <Dropdown>
+                        <DropdownTrigger asChild>
+                            <Button
+                                size="sm"
+                                variant="default"
+                                icon={<Building2 />}
+                                disabled={isPending}
+                            >
+                                Departamento
+                            </Button>
+                        </DropdownTrigger>
+                        <DropdownContent align="end">
+                            <DropdownLabel>Mover para</DropdownLabel>
+                            <DropdownSeparator />
+                            {bulkContext.departments.map((d) => (
+                                <DropdownItem
+                                    key={d.id}
+                                    onSelect={() =>
+                                        void applyBulk({ departmentId: d.id })
+                                    }
+                                >
+                                    {d.label}
+                                </DropdownItem>
+                            ))}
+                        </DropdownContent>
+                    </Dropdown>
+
+                    <Dropdown>
+                        <DropdownTrigger asChild>
+                            <Button
+                                size="sm"
+                                variant="default"
+                                icon={<UserCog />}
+                                disabled={isPending}
+                            >
+                                Prioridade
+                            </Button>
+                        </DropdownTrigger>
+                        <DropdownContent align="end">
+                            <DropdownLabel>Definir como</DropdownLabel>
+                            <DropdownSeparator />
+                            {PRIORITIES.map((p) => (
+                                <DropdownItem
+                                    key={p}
+                                    onSelect={() =>
+                                        void applyBulk({ priority: p })
+                                    }
+                                >
+                                    {PRIORITY_LABELS_PT[p]}
+                                </DropdownItem>
+                            ))}
+                        </DropdownContent>
+                    </Dropdown>
+
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={<X />}
+                        onClick={() => setSelected(new Set())}
+                        disabled={isPending}
+                    >
+                        Limpar seleção
+                    </Button>
+                </div>
+            ) : null}
+
+            <DataTable<TicketRowData>
+                columns={columns}
+                rows={rows}
+                rowKey={rowKey}
+                onRowClick={handleRowClick}
+            />
+
+            {/* trash icon imported but only used in dropdown items in
+                future expansions */}
+            <span aria-hidden="true" className="hidden">
+                <Trash2 />
+            </span>
+        </div>
     );
 }

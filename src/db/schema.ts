@@ -310,3 +310,67 @@ export const notifications = pgTable(
         ),
     }),
 );
+
+// ---------------------------------------------------------------------------
+// Ticket templates
+// ---------------------------------------------------------------------------
+
+/**
+ * Modelos pré-preenchidos para abertura de tickets ("Reset de senha",
+ * "Configurar VPN", etc.). Admins gerenciam; solicitantes escolhem
+ * um template no formulário de novo ticket e os campos chegam
+ * preenchidos para edição livre antes do submit.
+ */
+export const ticketTemplates = pgTable(
+    "ticket_templates",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        name: text("name").notNull(),
+        title: text("title").notNull(),
+        description: text("description").notNull(),
+        priority: priorityEnum("priority").notNull().default("media"),
+        categoryId: text("category_id")
+            .notNull()
+            .references(() => categories.id),
+        departmentId: uuid("department_id").references(() => departments.id),
+        active: boolean("active").notNull().default(true),
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+    },
+    (t) => ({
+        idxActive: index("ticket_templates_active_idx").on(t.active, t.name),
+    }),
+);
+
+// ---------------------------------------------------------------------------
+// Saved filters
+// ---------------------------------------------------------------------------
+
+/**
+ * Filtros salvos por usuário (ex.: "Meus em andamento", "Sem
+ * responsável críticos"). `queryString` armazena o suffix da URL
+ * sem o `?` inicial; a página de tickets só aplica `?<query>` ao
+ * link e o restante (parsing) já é resolvido pelos `searchParams`
+ * existentes.
+ */
+export const savedFilters = pgTable(
+    "saved_filters",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        userId: uuid("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        name: text("name").notNull(),
+        queryString: text("query_string").notNull(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+    },
+    (t) => ({
+        idxUser: index("saved_filters_user_idx").on(t.userId, t.createdAt),
+    }),
+);

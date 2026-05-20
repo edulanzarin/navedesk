@@ -293,7 +293,7 @@ export default async function KbArticlePage({ params }: KbArticlePageProps) {
                                 <span className="text-xs uppercase tracking-wide text-(--ink-3)">
                                     Autor
                                 </span>
-                                <span className="inline-flex items-center gap-2">
+                                <span className="inline-flex min-w-0 items-center gap-2">
                                     <Avatar
                                         name={authorName}
                                         {...(author?.avatarColor
@@ -304,7 +304,7 @@ export default async function KbArticlePage({ params }: KbArticlePageProps) {
                                             : {})}
                                         size="sm"
                                     />
-                                    <span className="truncate text-sm text-(--ink)">
+                                    <span className="min-w-0 truncate text-sm text-(--ink)" title={authorName}>
                                         {authorName}
                                     </span>
                                 </span>

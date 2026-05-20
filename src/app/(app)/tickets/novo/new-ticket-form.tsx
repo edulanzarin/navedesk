@@ -1,40 +1,12 @@
 /**
  * `NewTicketForm` — Client Component que adapta o `TicketForm` (puro,
- * "burro") à Server Action `createTicketAction` e cuida do redirect
- * após sucesso (R3.7).
+ * "burro") à Server Action `createTicketAction`, cuida do redirect
+ * pós-sucesso (R3.7) e expõe o seletor de templates para
+ * pré-preenchimento dos campos.
  *
- * Por que existir?
- *
- * - O contrato de `TicketForm.onSubmit` é um callback assíncrono que
- *   devolve `{ ok: true; id } | { ok: false; message }`. A Server
- *   Action `createTicketAction` devolve `ActionResult<Ticket>`. Esta
- *   camada faz a tradução fina entre os dois shapes — em vez de poluir
- *   o componente de domínio com conhecimento da action, e em vez de
- *   tornar a página inteira `"use client"` só para acessar
- *   `useRouter`.
- * - Mantém a página `/tickets/novo` como Server Component puro,
- *   responsável apenas por carregar dados e aplicar a defesa em
- *   profundidade da sessão.
- *
- * Comportamento:
- *
- * 1. O `TicketForm` faz o upload incremental dos anexos para
- *    `/api/uploads` e entrega ao `onSubmit` os IDs já validados,
- *    junto com `title`, `description`, `categoryId`, `departmentId`,
- *    `priority` e (opcional) `assigneeId`.
- * 2. Aqui descartamos `assigneeId` antes de enviar à action — o
- *    `CreateTicketSchema` e o `tickets.service.createTicket` ainda não
- *    consomem pré-atribuição na criação. Quando essa funcionalidade
- *    chegar, basta encadear `assignTicketAction` em sucesso (R3.8).
- * 3. Em sucesso (`ActionResult.ok === true`): toast positivo e
- *    `router.push("/tickets/{id}")` (R3.7).
- * 4. Em erro: devolvemos `{ ok: false, message }` para o `TicketForm`
- *    exibir o toast de erro e manter os campos preenchidos para
- *    correção. Quando o erro vem do RBAC do servidor (`FORBIDDEN`),
- *    a UI ainda mostra o controle por simplicidade — a action é a
- *    fonte da verdade.
- *
- * Validates: R3.7.
+ * Templates são apenas atalhos: ao escolher um, os campos do form
+ * são preenchidos via `initialValues` e o usuário pode editar livremente
+ * antes de submeter.
  */
 
 "use client";
@@ -43,38 +15,75 @@ import * as React from "react";
 
 import { useRouter } from "next/navigation";
 
+import { FileText } from "lucide-react";
+
 import {
     TicketForm,
     type TicketFormProps,
     type TicketFormValues,
 } from "@/components/domain/ticket-form";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { createTicketAction } from "@/actions/tickets";
 import { getErrorMessage } from "@/lib/error-messages";
+import type { Priority } from "@/types/domain";
 
-/**
- * Props expostas — espelha as do `TicketForm`, exceto `onSubmit` (que é
- * preenchido aqui) e os campos relacionados a pré-atribuição (mantidos
- * desligados nesta task; podem ser habilitados no futuro sem mudar o
- * contrato da página).
- */
+export interface TicketTemplate {
+    id: string;
+    name: string;
+    title: string;
+    description: string;
+    priority: Priority;
+    categoryId: string;
+    departmentId: string | null;
+}
+
 export type NewTicketFormProps = Pick<
     TicketFormProps,
     "categories" | "departments"
->;
+> & {
+    templates: TicketTemplate[];
+};
 
 export function NewTicketForm({
     categories,
     departments,
+    templates,
 }: NewTicketFormProps): React.ReactElement {
     const router = useRouter();
+    const [selectedTemplateId, setSelectedTemplateId] = React.useState<
+        string | undefined
+    >(undefined);
+
+    /**
+     * `initialValues` reage à seleção de template. A referência muda
+     * a cada escolha (mesmo voltando para um já selecionado antes),
+     * disparando o `reset` interno do `TicketForm`.
+     */
+    const initialValues = React.useMemo<
+        Partial<TicketFormValues> | undefined
+    >(() => {
+        if (!selectedTemplateId) return undefined;
+        const tpl = templates.find((t) => t.id === selectedTemplateId);
+        if (!tpl) return undefined;
+        return {
+            title: tpl.title,
+            description: tpl.description,
+            priority: tpl.priority,
+            categoryId: tpl.categoryId,
+            departmentId: tpl.departmentId ?? "",
+        };
+    }, [selectedTemplateId, templates]);
 
     async function handleSubmit(
         values: TicketFormValues,
     ): Promise<{ ok: true; id: string } | { ok: false; message: string }> {
-        // `assigneeId` ainda não é consumido pelo `CreateTicketSchema`;
-        // remover antes de chamar a action evita disparar erro de
-        // validação caso alguém habilite `allowAssign` por engano.
         const { assigneeId: _assigneeId, ...payload } = values;
         void _assigneeId;
 
@@ -85,22 +94,51 @@ export function NewTicketForm({
                 title: "Chamado aberto",
                 description: `Ticket ${result.data.id} criado com sucesso.`,
             });
-            // Redireciona para o detalhe do ticket recém-criado (R3.7).
-            // `router.push` mantém a navegação no client, evitando full
-            // reload — combina com a `revalidatePath("/tickets")` já
-            // disparada pela action.
             router.push(`/tickets/${result.data.id}`);
             return { ok: true, id: result.data.id };
         }
-
         return { ok: false, message: getErrorMessage(result.error) };
     }
 
     return (
-        <TicketForm
-            categories={categories}
-            departments={departments}
-            onSubmit={handleSubmit}
-        />
+        <div className="flex flex-col gap-5">
+            {templates.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                    <label
+                        htmlFor="template-select"
+                        className="flex items-center gap-1.5 text-sm font-medium text-(--ink)"
+                    >
+                        <FileText className="size-4" aria-hidden="true" />
+                        Usar um modelo (opcional)
+                    </label>
+                    <Select
+                        value={selectedTemplateId}
+                        onValueChange={(v) => setSelectedTemplateId(v)}
+                    >
+                        <SelectTrigger id="template-select">
+                            <SelectValue placeholder="Selecionar modelo…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {templates.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>
+                                    {t.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-(--ink-3)">
+                        Os campos serão preenchidos com os valores do
+                        modelo. Você pode editar antes de enviar.
+                    </p>
+                </div>
+            ) : null}
+
+            <TicketForm
+                categories={categories}
+                departments={departments}
+                onSubmit={handleSubmit}
+                initialValues={initialValues}
+            />
+        </div>
     );
 }

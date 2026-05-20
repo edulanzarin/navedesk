@@ -26,10 +26,15 @@ import {
     type MessageRow,
 } from "@/db/repositories/messages.repo";
 import { findTicketById } from "@/db/repositories/tickets.repo";
+import { listAll as listAllUsers } from "@/db/repositories/users.repo";
 import { canPostInternalNote, canViewTicket } from "@/lib/policies";
+import { resolveMentions } from "@/lib/mentions";
 import { type PostMessageInput } from "@/lib/schemas";
 import { publishEvent } from "@/lib/realtime";
-import { notifyMessagePosted } from "@/services/notifications.service";
+import {
+    notifyMessageMentions,
+    notifyMessagePosted,
+} from "@/services/notifications.service";
 import type { ActionResult, SessionUser } from "@/types/domain";
 
 /**
@@ -127,6 +132,16 @@ export async function postMessage(
             isInternal: input.isInternal,
         });
 
+        // Resolve menções `@nome` no corpo da mensagem. Carrega a
+        // lista completa de usuários (escala bem pra alguns milhares)
+        // e devolve os IDs únicos mencionados. Ambiguidades não
+        // disparam notificação.
+        const allUsers = await listAllUsers(tx);
+        const { userIds: mentionedIds } = resolveMentions(
+            input.body,
+            allUsers,
+        );
+
         // Fan-out de notificações para a contraparte da conversa
         // (assignee ou requester, dependendo do autor). Em transação
         // pra que mensagem e notificações vivam ou morram juntas.
@@ -137,6 +152,21 @@ export async function postMessage(
             input.isInternal,
             input.body,
         );
+
+        // Fan-out adicional para usuários explicitamente mencionados.
+        // Se a contraparte da conversa também foi mencionada, o
+        // `insertAndBroadcast` cria duas linhas — uma redundância
+        // aceita aqui pra simplicidade. Se virar problema, dá pra
+        // dedupe no `notifyMessageMentions`.
+        if (mentionedIds.length > 0) {
+            await notifyMessageMentions(
+                tx,
+                ticket,
+                actor,
+                input.isInternal,
+                mentionedIds,
+            );
+        }
 
         // Broadcast realtime: a página do ticket precisa rerenderizar
         // pra mostrar a nova mensagem em quem estiver olhando.
