@@ -41,6 +41,7 @@ import {
     transitionTicketStatus,
 } from "@/lib/ticket-state";
 import { nextTicketId } from "@/lib/ticket-id";
+import { publishEvent } from "@/lib/realtime";
 import {
     notifyTicketAssigned,
     notifyTicketCreated,
@@ -213,6 +214,11 @@ export async function createTicket(
             // ticket criado e notificações sejam atômicos: se algo
             // falhar aqui, a criação inteira faz rollback.
             await notifyTicketCreated(executor, inserted, actor);
+
+            // Broadcast realtime: listas de tickets mudaram.
+            await publishEvent(executor, {
+                type: "tickets_list_changed",
+            });
 
             return inserted;
         });
@@ -506,6 +512,16 @@ export async function changeTicketStatus(
             nextStatus,
         );
 
+        // Broadcast realtime: o ticket específico mudou e listas
+        // também (mudança de status afeta filtros).
+        await publishEvent(executor, {
+            type: "ticket_changed",
+            ticketId: ticket.id,
+        });
+        await publishEvent(executor, {
+            type: "tickets_list_changed",
+        });
+
         return row;
     });
 
@@ -567,6 +583,12 @@ export async function changeTicketPriority(
             ticket.priority,
             nextPriority,
         );
+
+        await publishEvent(executor, {
+            type: "ticket_changed",
+            ticketId: ticket.id,
+        });
+        await publishEvent(executor, { type: "tickets_list_changed" });
 
         return row;
     });
@@ -753,6 +775,11 @@ export async function rateTicket(
 
         await notifyTicketRated(executor, row, actor, ratingValue);
 
+        await publishEvent(executor, {
+            type: "ticket_changed",
+            ticketId: ticket.id,
+        });
+
         return row;
     });
 
@@ -853,6 +880,12 @@ async function performAssign(
             );
         }
 
+        await publishEvent(executor, {
+            type: "ticket_changed",
+            ticketId: ticket.id,
+        });
+        await publishEvent(executor, { type: "tickets_list_changed" });
+
         return row;
     });
 
@@ -902,6 +935,12 @@ async function performUnassign(
                 ticket.assigneeId,
             );
         }
+
+        await publishEvent(executor, {
+            type: "ticket_changed",
+            ticketId: ticket.id,
+        });
+        await publishEvent(executor, { type: "tickets_list_changed" });
 
         return row;
     });

@@ -137,13 +137,19 @@ export const LOGIN_RATE_LIMIT: RateLimitOptions = {
 export const loginRateLimiter: RateLimiter = new InMemoryRateLimiter();
 
 /**
- * Limite do auto-cadastro público em `/cadastro`: cinco contas por
- * hora, por IP. É deliberadamente baixo porque a rota cria registros
- * persistentes — diferente do login, cada tentativa bem-sucedida
- * deixa "pegada" no banco e abusos custam mais para reverter.
+ * Limite do auto-cadastro público em `/cadastro`.
+ *
+ * Como toda a empresa pode estar atrás do mesmo IP NAT, a janela
+ * precisa ser larga o suficiente para acomodar muitos cadastros
+ * simultâneos legítimos sem bloquear ninguém. 500 registros por hora
+ * por IP cobre confortavelmente uma onda inicial de adoção (200
+ * funcionários cadastrando ao mesmo tempo) sem abrir a porta para
+ * abuso massivo — um atacante teria que sustentar cerca de 8
+ * cadastros por minuto continuamente, ainda detectável e mitigável
+ * por outros meios (revisão admin, captcha futuro).
  */
 export const REGISTER_RATE_LIMIT: RateLimitOptions = {
-    limit: 5,
+    limit: 500,
     windowMs: 60 * 60_000,
 } as const;
 

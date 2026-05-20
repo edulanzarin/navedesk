@@ -28,6 +28,7 @@ import {
 import { findTicketById } from "@/db/repositories/tickets.repo";
 import { canPostInternalNote, canViewTicket } from "@/lib/policies";
 import { type PostMessageInput } from "@/lib/schemas";
+import { publishEvent } from "@/lib/realtime";
 import { notifyMessagePosted } from "@/services/notifications.service";
 import type { ActionResult, SessionUser } from "@/types/domain";
 
@@ -136,6 +137,13 @@ export async function postMessage(
             input.isInternal,
             input.body,
         );
+
+        // Broadcast realtime: a página do ticket precisa rerenderizar
+        // pra mostrar a nova mensagem em quem estiver olhando.
+        await publishEvent(tx, {
+            type: "ticket_changed",
+            ticketId: ticket.id,
+        });
 
         return inserted;
     });

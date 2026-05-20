@@ -1,30 +1,34 @@
 /**
  * `NotificationsBridge` — ponte entre o servidor e o navegador para
- * notificações desktop nativas (Web Notifications API).
+ * atualizações em tempo real.
  *
  * Comportamento:
  *
  * 1. **Pedido de permissão**: na primeira montagem, se o navegador
- *    suporta `Notification` e a permissão ainda é `default`, exibe um
- *    pequeno toast de cortesia perguntando se o usuário quer receber
- *    notificações desktop. O clique em "Ativar" chama
- *    `Notification.requestPermission()`. Se o usuário negar, o
- *    componente respeita e nunca mais pergunta — o estado fica em
- *    `localStorage` para que recarregar a página não reaprove.
+ *    suporta `Notification` e a permissão ainda é `default`, exibe
+ *    um toast de cortesia perguntando se o usuário quer receber
+ *    notificações desktop. Persiste o "já perguntei" em
+ *    `localStorage` para não insistir.
  *
- * 2. **Polling**: a cada 30s chama `getUnreadCountAction` para saber
- *    quantas não-lidas o usuário tem. Quando o contador **aumenta**
- *    em relação ao anterior, dispara uma notificação desktop com o
- *    título "Navedesk: novas notificações" e leva o usuário a
- *    `/notificacoes` ao clicar.
+ * 2. **EventSource (SSE)**: abre uma conexão persistente em
+ *    `/api/events`. O servidor envia eventos do tipo `notification`,
+ *    `ticket_changed` e `tickets_list_changed` em tempo real, vindos
+ *    do canal `navedesk_events` no Postgres (LISTEN/NOTIFY) — sem
+ *    polling.
  *
- * 3. **Atualização do badge**: quando o contador muda, faz um
- *    `router.refresh()` para que o Server Component pai recarregue
- *    `getSidebarCounts` e o badge da Sidebar reflita o novo estado
- *    sem reload completo.
+ * 3. **Reação aos eventos**:
+ *    - `notification`: dispara notificação desktop (quando permitida)
+ *      e chama `router.refresh()` para atualizar o badge da Sidebar
+ *      e a página de notificações se o usuário estiver nela.
+ *    - `ticket_changed` / `tickets_list_changed`: chama
+ *      `router.refresh()` para que Server Components reexecutem e
+ *      mostrem dados frescos sem reload.
+ *
+ * 4. **Reconexão**: o `EventSource` reconecta sozinho em caso de
+ *    queda. Apenas garantimos cleanup quando o componente desmonta.
  *
  * Esse componente fica sempre montado no `(app)/layout.tsx`, então
- * funciona em qualquer rota autenticada do produto.
+ * funciona em qualquer rota autenticada.
  */
 
 "use client";
@@ -33,24 +37,21 @@ import * as React from "react";
 
 import { useRouter } from "next/navigation";
 
-import { getUnreadCountAction } from "@/actions/notifications";
 import { toast } from "@/components/ui/use-toast";
 
-const POLL_INTERVAL_MS = 30_000;
 const PERMISSION_PROMPT_KEY = "navedesk:notifications-prompt-shown";
 
 export interface NotificationsBridgeProps {
-    /** Contador inicial calculado pelo Server Component pai. */
+    /**
+     * Contador inicial calculado pelo Server Component pai. Mantido
+     * apenas para compatibilidade — o estado real vem do refresh
+     * disparado por cada evento SSE.
+     */
     initialUnread: number;
 }
 
-export function NotificationsBridge({
-    initialUnread,
-}: NotificationsBridgeProps) {
+export function NotificationsBridge(_props: NotificationsBridgeProps) {
     const router = useRouter();
-    // Mantém o último contador conhecido em ref para que o polling
-    // detecte aumentos sem depender de re-render.
-    const lastCountRef = React.useRef(initialUnread);
 
     // Pedido de permissão na primeira montagem.
     React.useEffect(() => {
@@ -89,59 +90,70 @@ export function NotificationsBridge({
         });
     }, []);
 
-    // Polling do contador.
+    // SSE — atualizações em tempo real.
     React.useEffect(() => {
-        let cancelled = false;
+        if (typeof window === "undefined") return;
+        if (typeof EventSource === "undefined") return;
 
-        async function poll() {
-            const result = await getUnreadCountAction();
-            if (cancelled) return;
-            if (!result.ok) return;
+        const source = new EventSource("/api/events");
 
-            const next = result.data.count;
-            const previous = lastCountRef.current;
+        // Trigger genérico para Server Components reexecutarem. Usado
+        // por todos os tipos de evento — o ganho de granularidade não
+        // compensa o complexo invalidate seletivo no Next 15.
+        const refresh = () => router.refresh();
 
-            if (next > previous) {
-                // Notificação desktop quando suportado e permitido.
-                if (
-                    typeof Notification !== "undefined" &&
-                    Notification.permission === "granted"
-                ) {
-                    const delta = next - previous;
-                    const n = new Notification("Navedesk", {
-                        body:
-                            delta === 1
-                                ? "Você tem 1 nova notificação."
-                                : `Você tem ${delta} novas notificações.`,
-                        icon: "/navedesk.png",
-                        tag: "navedesk-unread",
-                        // `renotify` faz o sistema operacional avisar
-                        // mesmo que já exista uma notificação com
-                        // mesma `tag`.
-                        renotify: true,
-                    });
-                    n.onclick = () => {
-                        window.focus();
-                        router.push("/notificacoes");
-                        n.close();
+        // Notificação pessoal: além de refrescar, dispara aviso
+        // desktop nativo se o usuário tiver concedido permissão.
+        const onNotification = (ev: MessageEvent<string>) => {
+            // O usuário recebeu algo novo — UI atualiza.
+            refresh();
+
+            if (
+                typeof Notification !== "undefined" &&
+                Notification.permission === "granted"
+            ) {
+                let ticketId: string | undefined;
+                try {
+                    const parsed = JSON.parse(ev.data) as {
+                        ticketId?: string;
                     };
+                    ticketId = parsed.ticketId;
+                } catch {
+                    // ignora payload malformado
                 }
-                // Refresh para o badge da Sidebar reagir.
-                router.refresh();
-            } else if (next < previous) {
-                // Diminuiu (ex.: usuário entrou em /notificacoes em
-                // outra aba). Apenas atualiza referência sem refresh
-                // — o próximo navigate já refletirá.
-                router.refresh();
+                const n = new Notification("Navedesk", {
+                    body: "Você tem uma nova notificação.",
+                    icon: "/navedesk.png",
+                    tag: "navedesk-unread",
+                });
+                n.onclick = () => {
+                    window.focus();
+                    if (ticketId) {
+                        router.push(`/tickets/${ticketId}`);
+                    } else {
+                        router.push("/notificacoes");
+                    }
+                    n.close();
+                };
             }
+        };
 
-            lastCountRef.current = next;
-        }
+        source.addEventListener("notification", onNotification);
+        source.addEventListener("ticket_changed", refresh);
+        source.addEventListener("tickets_list_changed", refresh);
 
-        const interval = window.setInterval(poll, POLL_INTERVAL_MS);
+        // Erro/queda — o EventSource tenta reconectar sozinho. Só
+        // logamos para diagnóstico em dev.
+        source.onerror = () => {
+            // O readyState vai a CLOSED se o servidor recusou.
+            // Em CONNECTING, é apenas tentativa de reconexão.
+        };
+
         return () => {
-            cancelled = true;
-            window.clearInterval(interval);
+            source.removeEventListener("notification", onNotification);
+            source.removeEventListener("ticket_changed", refresh);
+            source.removeEventListener("tickets_list_changed", refresh);
+            source.close();
         };
     }, [router]);
 

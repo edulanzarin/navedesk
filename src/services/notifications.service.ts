@@ -43,6 +43,7 @@ import {
 } from "@/db/repositories/notifications.repo";
 import { listByRoles } from "@/db/repositories/users.repo";
 import { users } from "@/db/schema";
+import { publishEvent } from "@/lib/realtime";
 import type { Priority, SessionUser, Ticket, TicketStatus } from "@/types/domain";
 
 /** Tipo enxuto que representa o executor — `db` ou um `tx`. */
@@ -59,6 +60,27 @@ async function resolveActorName(
         .where(eq(users.id, actorId))
         .limit(1);
     return rows[0]?.name ?? "Alguém";
+}
+
+/**
+ * Insere notificações em lote e publica um evento realtime para cada
+ * destinatário. Centraliza o fan-out + broadcast em um único ponto
+ * para que cada chamador não precise duplicar a chamada `publishEvent`.
+ */
+async function insertAndBroadcast(
+    executor: DbExecutor,
+    rows: NotificationInsert[],
+): Promise<void> {
+    if (rows.length === 0) return;
+    await insertNotifications(executor, rows);
+    // Um evento por destinatário — o canal SSE filtra por userId.
+    for (const row of rows) {
+        await publishEvent(executor, {
+            type: "notification",
+            userId: row.userId,
+            ...(row.ticketId ? { ticketId: row.ticketId } : {}),
+        });
+    }
 }
 
 /**
@@ -87,7 +109,7 @@ export async function notifyTicketCreated(
         actorId: actor.id,
     }));
 
-    await insertNotifications(executor, rows);
+    await insertAndBroadcast(executor, rows);
 }
 
 /**
@@ -130,7 +152,7 @@ export async function notifyTicketStatusChanged(
         actorId: actor.id,
     }));
 
-    await insertNotifications(executor, rows);
+    await insertAndBroadcast(executor, rows);
 }
 
 /**
@@ -159,7 +181,7 @@ export async function notifyTicketPriorityChanged(
         actorId: actor.id,
     }));
 
-    await insertNotifications(executor, rows);
+    await insertAndBroadcast(executor, rows);
 }
 
 /**
@@ -195,7 +217,7 @@ export async function notifyTicketAssigned(
         actorId: actor.id,
     }));
 
-    await insertNotifications(executor, rows);
+    await insertAndBroadcast(executor, rows);
 }
 
 /**
@@ -224,7 +246,7 @@ export async function notifyTicketUnassigned(
         actorId: actor.id,
     }));
 
-    await insertNotifications(executor, rows);
+    await insertAndBroadcast(executor, rows);
 }
 
 /**
@@ -281,7 +303,7 @@ export async function notifyMessagePosted(
         actorId: actor.id,
     }));
 
-    await insertNotifications(executor, rows);
+    await insertAndBroadcast(executor, rows);
 }
 
 /**
@@ -296,7 +318,7 @@ export async function notifyTicketRated(
 ): Promise<void> {
     if (!ticket.assigneeId || ticket.assigneeId === actor.id) return;
 
-    await insertNotifications(executor, [
+    await insertAndBroadcast(executor, [
         {
             userId: ticket.assigneeId,
             ticketId: ticket.id,
