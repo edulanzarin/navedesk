@@ -80,10 +80,17 @@ export function canViewTicket(user: SessionUser, ticket: Ticket): boolean {
  *
  * Retorna `true` se e somente se:
  * 1. `user.role === "admin"`, ou
- * 2. `user.role === "tecnico"` e `ticket.assigneeId === user.id`, ou
+ * 2. `user.role === "tecnico"` e (`ticket.assigneeId === user.id` ou
+ *    `ticket.assigneeId === null` — auto-atribuição implícita), ou
  * 3. `user.role === "solicitante"`, `ticket.requesterId === user.id`,
  *    `ticket.status === "resolvido"` e `next === "fechado"` (solicitante
  *    confirmando fechamento do próprio ticket).
+ *
+ * O caso `assigneeId === null` libera o técnico a "puxar" um ticket sem
+ * responsável movendo o status — o serviço efetiva a auto-atribuição
+ * na mesma transação. Sem isso, o técnico ficaria preso ao paradoxo
+ * "preciso ser o responsável para mover, mas ainda não há
+ * responsável".
  *
  * A validade da transição (estado → ação) em si é responsabilidade da
  * máquina de estados em `lib/ticket-state.ts`; aqui tratamos apenas da
@@ -95,7 +102,10 @@ export function canChangeStatus(
     next: TicketStatus
 ): boolean {
     if (user.role === "admin") return true;
-    if (user.role === "tecnico" && ticket.assigneeId === user.id) return true;
+    if (user.role === "tecnico") {
+        if (ticket.assigneeId === user.id) return true;
+        if (ticket.assigneeId === null) return true;
+    }
     if (
         user.role === "solicitante" &&
         ticket.requesterId === user.id &&

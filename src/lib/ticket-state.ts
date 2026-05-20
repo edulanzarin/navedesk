@@ -14,7 +14,7 @@
  * | aberto       | andamento  | aguardando     | aberto      | resolvido   | —       | fechado   |
  * | andamento    | andamento  | aguardando     | andamento   | resolvido   | —       | fechado   |
  * | aguardando   | aguardando | aguardando     | andamento   | resolvido   | —       | fechado   |
- * | resolvido    | —          | —              | andamento   | resolvido   | aberto  | fechado   |
+ * | resolvido    | resolvido  | —              | andamento   | resolvido   | aberto  | fechado   |
  * | fechado      | —          | —              | —           | —           | aberto  | fechado   |
  *
  * Validates: R4.1, R4.2, R4.3, R4.4, R4.5, R4.6, R4.7, R4.8, R4.9
@@ -80,6 +80,7 @@ const TRANSITIONS: Readonly<
         CLOSE: "fechado",
     },
     resolvido: {
+        ASSIGN: "resolvido",
         RESPOND: "andamento",
         RESOLVE: "resolvido",
         REOPEN: "aberto",

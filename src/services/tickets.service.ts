@@ -387,19 +387,21 @@ export async function changeTicketStatus(
 
     // Auto-atribuição implícita (R5 — fluxo operacional do técnico).
     //
-    // Quando um **técnico** muda o status de um ticket que ainda está
-    // sem responsável, é praticamente certo que ele vai assumir o
-    // atendimento. Em vez de exigir dois cliques (Assumir → Mudar
-    // status), atribuímos automaticamente. Admin é exceção: o papel
-    // pode estar apenas reclassificando ou intervindo num ticket que
-    // outro técnico atenderá depois — manter o ticket sem responsável
-    // nesses casos é o comportamento correto.
+    // Quando um **técnico ou admin** muda o status de um ticket que
+    // ainda está sem responsável, é praticamente certo que ele vai
+    // assumir o atendimento. Em vez de exigir dois cliques (Assumir
+    // → Mudar status), atribuímos automaticamente a quem realizou a
+    // ação — independente do papel. Sem isso, tickets sem responsável
+    // viram "fantasmas" depois de ir para `andamento`/`resolvido`,
+    // quebrando o pareamento "quem moveu = quem responde" que a UI
+    // assume em listagens e métricas.
     //
     // O assignee é gravado no mesmo UPDATE da mudança de status (mesma
     // transação) e um evento `assigned` complementar é registrado para
     // manter a trilha completa.
     const willAutoAssign =
-        actor.role === "tecnico" && ticket.assigneeId === null;
+        (actor.role === "tecnico" || actor.role === "admin") &&
+        ticket.assigneeId === null;
 
     let action;
     try {
