@@ -39,11 +39,10 @@ body {
 }
 
 /*
- * Wallpaper Liquid Glass — gradientes radiais coloridos sobre o
- * fundo neutro. As tonalidades (índigo, azul-céu, rosa, hortelã)
- * imitam o "wallpaper Tahoe" do macOS quando visto através de uma
- * janela de vidro. Visível atrás de Sidebar, Topbar, Cards e
- * Dialogs com `backdrop-filter`.
+ * Wallpaper sutil — gradientes radiais muito discretos para dar leve
+ * profundidade sem competir com o conteúdo. As cores são mantidas em
+ * baixa opacidade (≤0.08) pra que cards/dialogs translúcidos com
+ * `backdrop-filter` peguem só uma sugestão de cor, não um lavado roxo.
  */
 body::before {
     content: "";
@@ -53,23 +52,13 @@ body::before {
     z-index: -1;
     background:
         radial-gradient(
-            900px 600px at 6% -8%,
-            rgba(94, 92, 230, 0.22),
+            900px 600px at 8% -8%,
+            rgba(94, 92, 230, 0.08),
             transparent 60%
         ),
         radial-gradient(
-            700px 500px at 95% -5%,
-            rgba(20, 115, 230, 0.18),
-            transparent 60%
-        ),
-        radial-gradient(
-            700px 500px at 95% 105%,
-            rgba(255, 107, 167, 0.14),
-            transparent 60%
-        ),
-        radial-gradient(
-            600px 400px at 5% 100%,
-            rgba(48, 178, 87, 0.1),
+            800px 500px at 95% 105%,
+            rgba(20, 115, 230, 0.06),
             transparent 60%
         ),
         var(--bg);

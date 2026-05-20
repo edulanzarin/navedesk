@@ -52,7 +52,7 @@ const DropdownContent = React.forwardRef<
                 className={cn(
                     "z-50 min-w-44 overflow-hidden p-1",
                     "rounded-(--r-3) border border-hairline border-(--line-glass)",
-                    "glass-panel shadow-(--sh-pop) text-(--ink)",
+                    "bg-white/92 backdrop-blur-xl backdrop-saturate-150 shadow-(--sh-pop) text-(--ink)",
                     "data-[state=open]:animate-slide-down",
                     className,
                 )}
