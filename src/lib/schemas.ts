@@ -119,6 +119,20 @@ export const RegisterSchema = z
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 
 /**
+ * Entrada para reset de senha pelo admin (R14).
+ *
+ * Diferente de `ChangePasswordSchema` (que exige a senha atual), este
+ * fluxo é administrativo: o admin define uma senha provisória que o
+ * próprio usuário trocará no primeiro login via `/perfil`. Mesmos
+ * limites (8..128) para manter a política de senhas coerente.
+ */
+export const ResetPasswordSchema = z.object({
+    userId: z.string().uuid(),
+    newPassword: z.string().min(8).max(128),
+});
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+
+/**
  * Entrada para atualização de uma política de SLA.
  *
  * `minutes` deve ser um inteiro positivo (mínimo 1 minuto); tickets já

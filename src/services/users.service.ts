@@ -30,6 +30,7 @@ import {
     ChangePasswordSchema,
     CreateUserSchema,
     RegisterSchema,
+    ResetPasswordSchema,
     UpdateAvatarSchema,
 } from "@/lib/schemas";
 import type { ActionResult, Role, SessionUser } from "@/types/domain";
@@ -480,4 +481,98 @@ export async function updateAvatar(
     }
 
     return { ok: true, data: updated };
+}
+
+
+/**
+ * Reset administrativo de senha (R14).
+ *
+ * Apenas `admin` pode redefinir a senha de outro usuário. O alvo
+ * recebe a nova senha provisória pessoalmente (canal off-line — o
+ * admin comunica via WhatsApp/Slack/etc) e troca no primeiro login
+ * em `/perfil`. Não enviamos por e-mail por enquanto, mantendo o
+ * sistema autônomo.
+ *
+ * Pipeline:
+ *
+ * 1. Valida `rawInput` com `ResetPasswordSchema` (`userId` + senha
+ *    com 8..128 chars).
+ * 2. Verifica autorização com `canManageUsers(actor)`. Falha →
+ *    `FORBIDDEN`.
+ * 3. Se o `userId` é o próprio admin, recusa — admin troca a
+ *    própria senha pelo fluxo normal de `/perfil`, que exige a
+ *    senha atual e mantém a auditoria correta.
+ * 4. Calcula `passwordHash = bcrypt(cost=12)` antes de tocar no
+ *    banco.
+ * 5. Persiste via `updateUserPassword(target.id, hash)`.
+ */
+export async function resetPassword(
+    actor: SessionUser,
+    rawInput: unknown,
+): Promise<ActionResult<{ id: string; email: string }>> {
+    const parsed = ResetPasswordSchema.safeParse(rawInput);
+    if (!parsed.success) {
+        const issue = parsed.error.issues[0];
+        const field = issue?.path.join(".") || undefined;
+        return {
+            ok: false,
+            error: {
+                code: "VALIDATION_ERROR",
+                message: issue?.message ?? "Dados inválidos.",
+                ...(field ? { field } : {}),
+            },
+        };
+    }
+
+    if (!canManageUsers(actor)) {
+        return {
+            ok: false,
+            error: {
+                code: "FORBIDDEN",
+                message: "Você não pode redefinir senhas.",
+            },
+        };
+    }
+
+    const { userId, newPassword } = parsed.data;
+
+    if (userId === actor.id) {
+        return {
+            ok: false,
+            error: {
+                code: "VALIDATION_ERROR",
+                message:
+                    "Use a página de perfil para alterar sua própria senha.",
+                field: "userId",
+            },
+        };
+    }
+
+    const target = await findById(db, userId);
+    if (!target) {
+        return {
+            ok: false,
+            error: {
+                code: "NOT_FOUND",
+                message: "Usuário não encontrado.",
+            },
+        };
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+    const updated = await updateUserPassword(db, target.id, passwordHash);
+    if (!updated) {
+        return {
+            ok: false,
+            error: {
+                code: "NOT_FOUND",
+                message: "Usuário não encontrado.",
+            },
+        };
+    }
+
+    return {
+        ok: true,
+        data: { id: updated.id, email: updated.email },
+    };
 }

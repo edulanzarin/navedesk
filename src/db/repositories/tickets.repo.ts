@@ -33,6 +33,7 @@ import {
     isNull,
     lt,
     or,
+    sql,
     type SQL,
 } from "drizzle-orm";
 
@@ -325,9 +326,26 @@ export async function listWithFilters(
     }
 
     if (filters.q !== undefined && filters.q.trim().length > 0) {
-        const pattern = `%${filters.q.trim()}%`;
+        const term = filters.q.trim();
+        // Estratégia de busca:
+        // 1. Match exato no `id` legível (ex.: "NVD-1043"). Útil quando
+        //    o operador cola um identificador inteiro.
+        // 2. Full-text search em `title + description` via tsvector
+        //    com configuração `portuguese` (stemming + remoção de
+        //    stopwords). Quebra o input por whitespace e usa
+        //    `plainto_tsquery` que escapa caracteres especiais
+        //    automaticamente — não precisamos sanear por conta
+        //    própria.
+        // 3. Trigrama (`%term%`) sobre o título como fallback para
+        //    códigos/strings que o stemmer ignoraria (ex.: "VPN-CORP",
+        //    "ERP-12"). Indexado em GIN, então não é varredura.
+        const idPattern = `%${term}%`;
         conditions.push(
-            or(ilike(tickets.title, pattern), ilike(tickets.id, pattern)) as SQL,
+            or(
+                ilike(tickets.id, idPattern),
+                sql`to_tsvector('portuguese', coalesce(${tickets.title}, '') || ' ' || coalesce(${tickets.description}, '')) @@ plainto_tsquery('portuguese', ${term})`,
+                ilike(tickets.title, idPattern),
+            ) as SQL,
         );
     }
 

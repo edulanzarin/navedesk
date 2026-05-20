@@ -42,11 +42,10 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Plus, Search } from "lucide-react";
-
-import {
+import { Plus, Search } from "lucide-react";import {
     createUserAction,
     deactivateUserAction,
+    resetUserPasswordAction,
     updateUserRoleAction,
 } from "@/actions/admin";
 import { Avatar } from "@/components/ui/avatar";
@@ -139,6 +138,11 @@ export function UsersManagement({
     );
     const [isCreating, startCreateTransition] = React.useTransition();
 
+    /** Diálogo de reset de senha (admin → outro usuário). */
+    const [resetTarget, setResetTarget] = React.useState<UserRow | null>(null);
+    const [resetPassword, setResetPassword] = React.useState("");
+    const [isResetting, startResetTransition] = React.useTransition();
+
     /**
      * Submete a busca: navega para a mesma rota com `?q=` atualizado e
      * sem `cursor` (volta pra primeira página). String vazia limpa o
@@ -215,6 +219,36 @@ export function UsersManagement({
         } finally {
             setPendingUserId(null);
         }
+    }
+
+    function handleResetSubmit(e: React.FormEvent<HTMLFormElement>): void {
+        e.preventDefault();
+        const target = resetTarget;
+        if (!target) return;
+
+        const payload = {
+            userId: target.id,
+            newPassword: resetPassword,
+        };
+
+        startResetTransition(async () => {
+            const result = await resetUserPasswordAction(payload);
+            if (result.ok) {
+                toast({
+                    variant: "success",
+                    title: "Senha redefinida",
+                    description: `Comunique a nova senha provisória a ${target.name}.`,
+                });
+                setResetTarget(null);
+                setResetPassword("");
+            } else {
+                toast({
+                    variant: "error",
+                    title: "Não foi possível redefinir a senha",
+                    description: getErrorMessage(result.error),
+                });
+            }
+        });
     }
 
     function handleCreateSubmit(e: React.FormEvent<HTMLFormElement>): void {
@@ -342,7 +376,7 @@ export function UsersManagement({
         {
             id: "actions",
             header: "",
-            width: "180px",
+            width: "260px",
             cell: (u) => {
                 if (u.id === currentUserId) {
                     return (
@@ -362,14 +396,26 @@ export function UsersManagement({
                     );
                 }
                 return (
-                    <Button
-                        size="sm"
-                        variant="default"
-                        loading={pendingUserId === u.id}
-                        onClick={() => void handleDeactivate(u.id)}
-                    >
-                        Desativar
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => {
+                                setResetTarget(u);
+                                setResetPassword("");
+                            }}
+                        >
+                            Redefinir senha
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="default"
+                            loading={pendingUserId === u.id}
+                            onClick={() => void handleDeactivate(u.id)}
+                        >
+                            Desativar
+                        </Button>
+                    </div>
                 );
             },
         },
@@ -640,6 +686,74 @@ export function UsersManagement({
                                 loading={isCreating}
                             >
                                 Criar usuário
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={resetTarget !== null}
+                onOpenChange={(next) => {
+                    if (!next) {
+                        setResetTarget(null);
+                        setResetPassword("");
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Redefinir senha</DialogTitle>
+                        <DialogDescription>
+                            {resetTarget
+                                ? `Defina uma nova senha provisória para ${resetTarget.name}. Comunique-a por canal seguro — o usuário pode trocá-la em /perfil.`
+                                : null}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form
+                        onSubmit={handleResetSubmit}
+                        className="flex flex-col gap-4"
+                    >
+                        <div className="flex flex-col gap-1.5">
+                            <label
+                                htmlFor="reset-password"
+                                className="text-sm font-medium text-(--ink)"
+                            >
+                                Nova senha provisória
+                            </label>
+                            <Input
+                                id="reset-password"
+                                type="password"
+                                required
+                                minLength={8}
+                                maxLength={128}
+                                value={resetPassword}
+                                onChange={(e) =>
+                                    setResetPassword(e.target.value)
+                                }
+                            />
+                            <p className="text-xs text-(--ink-3)">
+                                Mínimo 8 caracteres.
+                            </p>
+                        </div>
+
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="default"
+                                onClick={() => {
+                                    setResetTarget(null);
+                                    setResetPassword("");
+                                }}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                type="submit"
+                                variant="primary"
+                                loading={isResetting}
+                            >
+                                Redefinir senha
                             </Button>
                         </DialogFooter>
                     </form>

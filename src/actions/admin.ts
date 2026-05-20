@@ -107,6 +107,22 @@ export async function updateUserRoleAction(
 }
 
 /**
+ * Redefine a senha de um usuário (apenas admin, R14). O admin
+ * comunica a nova senha provisória ao usuário pelo canal interno
+ * adequado; o usuário troca no primeiro login em `/perfil`.
+ */
+export async function resetUserPasswordAction(
+    rawInput: unknown,
+): Promise<ActionResult<{ id: string; email: string }>> {
+    const actor = await requireSession();
+    if (!actor) return unauthorized();
+
+    const result = await usersService.resetPassword(actor, rawInput);
+    if (result.ok) revalidatePath("/admin/usuarios");
+    return result;
+}
+
+/**
  * Atualiza a Politica_SLA de uma prioridade (R15.2, R15.3). Tickets
  * existentes preservam seu `slaDeadline` (R6.10) — a nova janela vale
  * apenas para tickets futuros. O serviço já invalida o cache de

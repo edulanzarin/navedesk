@@ -33,8 +33,6 @@ import { useRouter } from "next/navigation";
 
 import { toast } from "@/components/ui/use-toast";
 
-const PERMISSION_PROMPT_KEY = "navedesk:notifications-prompt-shown";
-
 export interface NotificationsBridgeProps {
     /** Contador inicial calculado pelo Server Component pai. */
     initialUnread: number;
@@ -79,18 +77,18 @@ export function NotificationsBridge({
             unread > 0 ? `(${unread}) ${stripped}` : stripped;
     }, [unread]);
 
-    // Pedido de permissão na primeira montagem.
+    // Pedido de permissão na primeira montagem da aba/sessão. Sem
+    // localStorage flag: se a permissão segue `default`, o toast
+    // aparece toda vez que o app é aberto numa aba nova. Como o
+    // bridge é montado no layout, isso é uma vez por sessão — não
+    // a cada navegação. Persistência fica a cargo do navegador
+    // (depois que o usuário concede ou nega, `permission` deixa de
+    // ser `default` e o toast some). Quem ignorou pode reativar a
+    // qualquer momento pelo card em `/perfil`.
     React.useEffect(() => {
         if (typeof window === "undefined") return;
         if (typeof Notification === "undefined") return;
         if (Notification.permission !== "default") return;
-
-        const alreadyAsked = window.localStorage.getItem(
-            PERMISSION_PROMPT_KEY,
-        );
-        if (alreadyAsked === "1") return;
-
-        window.localStorage.setItem(PERMISSION_PROMPT_KEY, "1");
 
         toast({
             variant: "info",
@@ -110,7 +108,7 @@ export function NotificationsBridge({
                     });
                 },
             },
-            duration: 12_000,
+            duration: 30_000,
         });
     }, []);
 
