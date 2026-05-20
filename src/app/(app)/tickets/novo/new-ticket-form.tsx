@@ -15,7 +15,7 @@ import * as React from "react";
 
 import { useRouter } from "next/navigation";
 
-import { FileText } from "lucide-react";
+import { FileText, UserPlus } from "lucide-react";
 
 import {
     TicketForm,
@@ -44,22 +44,43 @@ export interface TicketTemplate {
     departmentId: string | null;
 }
 
+/**
+ * Solicitante candidato exibido no select "Em nome de" (admin/tecnico).
+ * `email` aparece em texto secundário para distinguir homônimos.
+ */
+export interface RequesterOption {
+    id: string;
+    name: string;
+    email: string;
+}
+
 export type NewTicketFormProps = Pick<
     TicketFormProps,
     "categories" | "departments"
 > & {
     templates: TicketTemplate[];
+    /**
+     * Lista de possíveis solicitantes. Quando `undefined`, o seletor
+     * "Em nome de" não é exibido (ator é solicitante comum, R3 padrão).
+     */
+    requesters?: RequesterOption[];
 };
 
 export function NewTicketForm({
     categories,
     departments,
     templates,
+    requesters,
 }: NewTicketFormProps): React.ReactElement {
     const router = useRouter();
     const [selectedTemplateId, setSelectedTemplateId] = React.useState<
         string | undefined
     >(undefined);
+    const [requesterId, setRequesterId] = React.useState<string | undefined>(
+        undefined,
+    );
+
+    const showRequesterPicker = !!requesters && requesters.length > 0;
 
     /**
      * `initialValues` reage à seleção de template. A referência muda
@@ -87,7 +108,14 @@ export function NewTicketForm({
         const { assigneeId: _assigneeId, ...payload } = values;
         void _assigneeId;
 
-        const result = await createTicketAction(payload);
+        // Quando o ator é admin/tecnico e selecionou alguém em "Em
+        // nome de", manda o `requesterId` no payload para o serviço
+        // gravar o ticket em nome do solicitante real.
+        const finalPayload = requesterId
+            ? { ...payload, requesterId }
+            : payload;
+
+        const result = await createTicketAction(finalPayload);
         if (result.ok) {
             toast({
                 variant: "success",
@@ -102,6 +130,40 @@ export function NewTicketForm({
 
     return (
         <div className="flex flex-col gap-5">
+            {showRequesterPicker ? (
+                <div className="flex flex-col gap-1.5">
+                    <label
+                        htmlFor="requester-select"
+                        className="flex items-center gap-1.5 text-sm font-medium text-(--ink)"
+                    >
+                        <UserPlus className="size-4" aria-hidden="true" />
+                        Em nome de (opcional)
+                    </label>
+                    <Select
+                        value={requesterId}
+                        onValueChange={(v) =>
+                            setRequesterId(v.length > 0 ? v : undefined)
+                        }
+                    >
+                        <SelectTrigger id="requester-select">
+                            <SelectValue placeholder="Eu mesmo (padrão)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {requesters!.map((r) => (
+                                <SelectItem key={r.id} value={r.id}>
+                                    {r.name} — {r.email}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-(--ink-3)">
+                        Selecione o solicitante quando estiver abrindo o
+                        chamado em nome de outra pessoa. Em branco abre
+                        em seu próprio nome.
+                    </p>
+                </div>
+            ) : null}
+
             {templates.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                     <label

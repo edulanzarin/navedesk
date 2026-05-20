@@ -98,7 +98,6 @@ export async function notifyTicketCreated(
 ): Promise<void> {
     const recipients = await listByRoles(executor, ["tecnico", "admin"]);
     const targets = recipients.filter((u) => u.id !== actor.id);
-    if (targets.length === 0) return;
 
     const rows: NotificationInsert[] = targets.map((u) => ({
         userId: u.id,
@@ -109,6 +108,21 @@ export async function notifyTicketCreated(
         actorId: actor.id,
     }));
 
+    // Quando o ticket foi aberto "em nome de" outra pessoa
+    // (`requesterId !== actor.id`), avisa o requester real também —
+    // assim ele sabe que TI registrou o chamado dele e pode acompanhar.
+    if (ticket.requesterId !== actor.id) {
+        rows.push({
+            userId: ticket.requesterId,
+            ticketId: ticket.id,
+            type: "ticket_created",
+            title: `Chamado aberto em seu nome: ${ticket.id}`,
+            body: `${actor.name} registrou "${ticket.title}" em seu nome.`,
+            actorId: actor.id,
+        });
+    }
+
+    if (rows.length === 0) return;
     await insertAndBroadcast(executor, rows);
 }
 

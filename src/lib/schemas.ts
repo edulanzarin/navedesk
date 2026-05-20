@@ -32,6 +32,14 @@ export const CreateTicketSchema = z.object({
     priority: z.enum(PRIORITIES),
     departmentId: z.string().uuid(),
     attachments: z.array(z.string().uuid()).max(10).default([]),
+    /**
+     * Quando informado, indica o solicitante "real" do ticket — o
+     * `actor` está abrindo o chamado em nome de outra pessoa.
+     * Apenas `admin`/`tecnico` podem usar este campo; o serviço
+     * rejeita o uso por solicitantes (vira `FORBIDDEN`). Quando
+     * omitido, `requesterId` é fixado como o próprio `actor`.
+     */
+    requesterId: z.string().uuid().optional(),
 });
 export type CreateTicketInput = z.infer<typeof CreateTicketSchema>;
 

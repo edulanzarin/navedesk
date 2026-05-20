@@ -34,6 +34,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { db } from "@/db/client";
+import { listUsersPage } from "@/db/repositories/users.repo";
 import { listActiveTemplates } from "@/db/repositories/ticket-templates.repo";
 import { auth } from "@/lib/auth";
 import { listCategories, listDepartments } from "@/services/reads.service";
@@ -48,22 +49,30 @@ export default async function NewTicketPage() {
     if (!session?.user) {
         redirect("/login");
     }
-    // O destructure abaixo apenas documenta o tipo do actor; a página
-    // em si não precisa do objeto, já que `createTicketAction` lê a
-    // sessão de novo no servidor.
-    const _actor = session.user satisfies SessionUser;
-    void _actor;
+    const actor = session.user satisfies SessionUser;
+    const canActOnBehalf = actor.role === "admin" || actor.role === "tecnico";
 
     // Leituras estáveis em paralelo (cache TTL 60s, R15.3). Categorias
     // inativas são filtradas aqui — `listCategories()` devolve o
     // catálogo completo para a UI administrativa, e cada caller decide
     // o subset que faz sentido (R15.6).
-    const [allCategories, departments, templates] = await Promise.all([
-        listCategories(),
-        listDepartments(),
-        listActiveTemplates(db),
-    ]);
+    const [allCategories, departments, templates, requestersPage] =
+        await Promise.all([
+            listCategories(),
+            listDepartments(),
+            listActiveTemplates(db),
+            // Carrega lista de possíveis solicitantes só pra admin/tecnico.
+            // Limite generoso (200) cobre o universo pequeno típico de TI
+            // interna; para bases maiores, transformaríamos isso num
+            // combobox com busca.
+            canActOnBehalf
+                ? listUsersPage(db, {}, undefined, 200)
+                : Promise.resolve({ rows: [], nextCursor: null }),
+        ]);
     const categories = allCategories.filter((c) => c.active);
+    const requesters = requestersPage.rows
+        .filter((u) => u.active && u.id !== actor.id)
+        .map((u) => ({ id: u.id, name: u.name, email: u.email }));
 
     return (
         <div>
@@ -83,6 +92,7 @@ export default async function NewTicketPage() {
                     categoryId: t.categoryId,
                     departmentId: t.departmentId,
                 }))}
+                requesters={canActOnBehalf ? requesters : undefined}
             />
         </div>
     );

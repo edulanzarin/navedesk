@@ -159,6 +159,38 @@ export async function createTicket(
         };
     }
 
+    // 2a. "Em nome de" — apenas admin/tecnico pode setar `requesterId`
+    // diferente do próprio `actor`. Solicitantes que enviarem o campo
+    // (ex.: tentativa via API direta) recebem FORBIDDEN.
+    let effectiveRequesterId = actor.id;
+    if (input.requesterId && input.requesterId !== actor.id) {
+        if (actor.role !== "admin" && actor.role !== "tecnico") {
+            return {
+                ok: false,
+                error: {
+                    code: "FORBIDDEN",
+                    message:
+                        "Apenas administradores e técnicos podem abrir tickets em nome de outros usuários.",
+                    field: "requesterId",
+                },
+            };
+        }
+        // Verifica se o usuário existe e está ativo. Sem isso, um
+        // admin podia anexar um UUID inválido e gerar FK error feia.
+        const target = await findUserById(db, input.requesterId);
+        if (!target || !target.active) {
+            return {
+                ok: false,
+                error: {
+                    code: "VALIDATION",
+                    message: "Solicitante informado é inválido ou está inativo.",
+                    field: "requesterId",
+                },
+            };
+        }
+        effectiveRequesterId = target.id;
+    }
+
     // 3. Transação atômica — R3.5, R3.6, R16.1.
     try {
         const ticket = await db.transaction(async (tx) => {
@@ -181,7 +213,7 @@ export async function createTicket(
                 priority: input.priority,
                 categoryId: input.categoryId,
                 departmentId: input.departmentId,
-                requesterId: actor.id,
+                requesterId: effectiveRequesterId,
                 assigneeId: null,
                 createdAt: now,
                 updatedAt: now,
