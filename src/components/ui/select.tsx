@@ -59,14 +59,15 @@ const SelectTrigger = React.forwardRef<
         <SelectPrimitive.Trigger
             ref={ref}
             className={cn(
-                // base — espelha Input para coerência visual (Liquid Glass)
-                "flex h-10 w-full items-center justify-between rounded-(--r-3) border border-hairline border-(--line-glass) bg-white/55 backdrop-blur-md px-3 text-sm",
+                // base — espelha Input para coerência visual: cinza
+                // afundado para se manter idêntico em qualquer fundo.
+                "flex h-10 w-full items-center justify-between rounded-(--r-3) border border-hairline border-(--line-strong) bg-(--bg-sunk) px-3 text-sm",
                 // tinta + placeholder
                 "text-(--ink) data-[placeholder]:text-(--ink-4)",
                 // transição
                 "transition-all duration-[var(--dur-fast)] ease-[var(--ease-out)]",
                 // foco visível — borda + halo de acento
-                "outline-none focus-visible:border-(--accent) focus-visible:bg-white/80 focus-visible:shadow-[0_0_0_3px_var(--accent-soft)]",
+                "outline-none focus-visible:border-(--accent) focus-visible:bg-(--bg-elev) focus-visible:shadow-[0_0_0_3px_var(--accent-soft)]",
                 // disabled
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 // ícone

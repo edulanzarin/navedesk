@@ -41,17 +41,19 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
             type={type ?? "text"}
             aria-invalid={ariaInvalid ?? (error ? true : undefined)}
             className={cn(
-                // base — layout, dimensões e tipografia (Liquid Glass)
-                "flex h-10 w-full rounded-(--r-3) border border-hairline border-(--line-glass) bg-white/55 backdrop-blur-md px-3 py-2 text-sm",
+                // base — campo levemente afundado em cinza neutro pra
+                // que a aparência permaneça idêntica em qualquer fundo
+                // (wallpaper colorido, card glass, dialog opaco).
+                "flex h-10 w-full rounded-(--r-3) border border-hairline border-(--line-strong) bg-(--bg-sunk) px-3 py-2 text-sm",
                 // tinta + placeholder
                 "text-(--ink) placeholder:text-(--ink-4)",
                 // transição suave
                 "transition-all duration-[var(--dur-fast)] ease-[var(--ease-out)]",
-                // foco visível — borda + halo de acento (estilo macOS)
-                "focus-visible:outline-none focus-visible:border-(--accent) focus-visible:bg-white/80 focus-visible:shadow-[0_0_0_3px_var(--accent-soft)]",
+                // foco visível — borda + halo de acento
+                "focus-visible:outline-none focus-visible:border-(--accent) focus-visible:bg-(--bg-elev) focus-visible:shadow-[0_0_0_3px_var(--accent-soft)]",
                 // disabled
                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                // erro — borda + ring no token --red (sobrepõe o foco padrão)
+                // erro
                 error &&
                     "border-(--red) focus-visible:border-(--red) focus-visible:shadow-[0_0_0_3px_var(--red-soft)]",
                 className,
