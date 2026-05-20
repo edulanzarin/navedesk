@@ -1,12 +1,13 @@
 /*
  * NaveDesk — design tokens.
  *
- * Fonte única de verdade para a paleta índigo Tahoe, raios, sombras e
- * tipografia. Espelhado em `src/lib/design-tokens.ts` para uso em
- * componentes (ver task 4.2). Importado em `globals.css` na task 4.3.
+ * Fonte única de verdade para a paleta índigo Tahoe, raios, sombras,
+ * vidros (glass) e tipografia. Espelhado em `src/lib/design-tokens.ts`
+ * para uso em componentes. Importado em `globals.css`.
  *
  * Estética inspirada em macOS Tahoe (Liquid Glass), sem cópia: superfícies
- * neutras quentes-frias, sombras suaves, cantos squircle e acento índigo.
+ * neutras quentes-frias, sombras suaves, cantos squircle, vibrancy em
+ * trilhos e overlays, e acento índigo.
  *
  * Validates: R19.1, R21.1, R21.2, R21.3, R21.4, R21.5
  */
@@ -15,14 +16,17 @@
     /* ── superfícies ──────────────────────────────────────── */
     --bg: #f3f3f6;
     --bg-elev: #ffffff;
+    --bg-elev-translucent: rgba(255, 255, 255, 0.78);
     --bg-sunk: #ececef;
-    --bg-rail: rgba(248, 248, 250, 0.72);
+    --bg-rail: rgba(248, 248, 250, 0.62);
     --bg-overlay: rgba(255, 255, 255, 0.82);
+    --bg-topbar: rgba(255, 255, 255, 0.6);
 
-    /* ── linhas ───────────────────────────────────────────── */
+    /* ── linhas (hairlines 0.5px no estilo macOS) ─────────── */
     --line: rgba(0, 0, 0, 0.08);
     --line-strong: rgba(0, 0, 0, 0.14);
     --line-soft: rgba(0, 0, 0, 0.04);
+    --line-glass: rgba(255, 255, 255, 0.7);
 
     /* ── tinta (ink) ──────────────────────────────────────── */
     --ink: #18181b;
@@ -34,9 +38,12 @@
     /* ── acento (índigo Tahoe) ────────────────────────────── */
     --accent: #5e5ce6;
     --accent-2: #7d7bee;
+    --accent-3: #4f4dd9;
     --accent-soft: rgba(94, 92, 230, 0.12);
     --accent-soft-2: rgba(94, 92, 230, 0.06);
+    --accent-glow: rgba(94, 92, 230, 0.35);
     --accent-ink: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #5e5ce6, #7d7bee);
 
     /* ── status ───────────────────────────────────────────── */
     --green: #30b257;
@@ -70,6 +77,30 @@
         0 1px 0 rgba(255, 255, 255, 0.6) inset,
         0 18px 48px rgba(15, 15, 20, 0.18),
         0 0 0 0.5px rgba(0, 0, 0, 0.08);
+    --sh-accent:
+        0 1px 0 rgba(255, 255, 255, 0.25) inset,
+        0 1px 3px rgba(94, 92, 230, 0.35),
+        0 4px 14px rgba(94, 92, 230, 0.18);
+    --sh-lift:
+        0 1px 0 rgba(255, 255, 255, 0.6) inset,
+        0 8px 24px rgba(15, 15, 20, 0.1),
+        0 0 0 0.5px rgba(0, 0, 0, 0.08);
+
+    /* ── glass (Liquid Glass / vibrancy) ──────────────────── */
+    --glass: blur(28px) saturate(180%);
+    --glass-subtle: blur(18px) saturate(140%);
+    --glass-intense: blur(40px) saturate(200%);
+
+    /* ── layout ───────────────────────────────────────────── */
+    --rail-w: 240px;
+    --topbar-h: 64px;
+
+    /* ── transições ───────────────────────────────────────── */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-fast: 120ms;
+    --dur-normal: 180ms;
+    --dur-slow: 280ms;
 
     /* ── tipografia ───────────────────────────────────────── */
     /*
@@ -77,6 +108,9 @@
      * `geist` (next/font) em `src/app/layout.tsx`. O segundo argumento
      * de `var()` cobre o caso de a fonte não estar disponível, conforme
      * R21.3 (fallback ui-sans-serif / ui-monospace).
+     *
+     * `font-feature-settings` ativa as variantes estilísticas do Geist
+     * que aproximam a tipografia do San Francisco do macOS.
      */
     --font:
         var(--font-geist-sans), ui-sans-serif, -apple-system,

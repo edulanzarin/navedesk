@@ -18,6 +18,8 @@
  * Validates: R1.1, R1.4, R20.1.
  */
 
+import Image from "next/image";
+
 import {
     Card,
     CardContent,
@@ -25,7 +27,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { BRAND_NAME, BRAND_ORG } from "@/lib/brand";
+import { BRAND_NAME, BRAND_ORG, LOGO_PATH } from "@/lib/brand";
 
 import { LoginForm } from "./login-form";
 
@@ -63,14 +65,33 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     const next = sanitizeNext(params.next);
 
     return (
-        <Card className="w-full max-w-sm">
-            <CardHeader>
-                <CardTitle>Entrar no {BRAND_NAME}</CardTitle>
-                <CardDescription>
-                    Central de TI da {BRAND_ORG}.
-                </CardDescription>
+        <Card
+            className={[
+                "relative z-10 w-full max-w-[380px] animate-pop",
+                "bg-white/65 glass-panel-intense",
+                "border-hairline border-(--line-glass)",
+                "rounded-(--r-5) shadow-(--sh-pop)",
+            ].join(" ")}
+        >
+            <CardHeader className="flex-col items-center gap-3 pb-2 text-center">
+                <Image
+                    src={LOGO_PATH}
+                    alt=""
+                    width={44}
+                    height={44}
+                    className="size-11 object-contain"
+                    priority
+                />
+                <div>
+                    <CardTitle className="text-[22px] font-semibold tracking-[-0.025em]">
+                        Entrar no {BRAND_NAME}
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-[13.5px]">
+                        Suporte de TI {BRAND_ORG}.
+                    </CardDescription>
+                </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
                 <LoginForm next={next} />
             </CardContent>
         </Card>

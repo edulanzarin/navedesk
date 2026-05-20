@@ -3,13 +3,16 @@
  *
  * Em Tailwind v4 todos os `@import` devem vir antes da diretiva
  * `@import "tailwindcss"`. Os tokens (paleta índigo Tahoe, raios,
- * sombras e tipografia) ficam em `src/styles/tokens.css` e são
- * importados aqui para serem aplicados globalmente.
+ * sombras, vidros e tipografia) ficam em `src/styles/tokens.css` e
+ * são importados aqui para serem aplicados globalmente.
  *
- * As variáveis `--font-geist-sans` / `--font-geist-mono` são expostas
- * pelo pacote `geist` (next/font) através de `<html className=...>`
- * em `src/app/layout.tsx` e consumidas em `tokens.css` por `--font` e
- * `--font-mono`.
+ * Aplicado por padrão:
+ * - Wallpaper sutil com gradientes radiais (`body::before`).
+ * - Tipografia com features estilísticas Geist ("ss01","cv11") para
+ *   aproximação do San Francisco em macOS.
+ * - Scrollbars finas no estilo Tahoe.
+ * - Conjunto rico de animações para overlays, listas e elementos
+ *   interativos. Tudo desativável via `prefers-reduced-motion`.
  *
  * Validates: R20.2, R21.2, R21.3
  */
@@ -26,8 +29,40 @@ body {
     background: var(--bg);
     color: var(--ink);
     font-family: var(--font);
+    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.005em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/*
+ * Wallpaper sutil — dois "blobs" coloridos suaves no canto superior
+ * esquerdo (índigo) e inferior direito (azul), fixados na viewport.
+ * O efeito é discreto o bastante para não competir com conteúdo, mas
+ * dá ao app a profundidade característica de uma janela sobre o
+ * desktop do macOS.
+ */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background:
+        radial-gradient(
+            1200px 600px at 8% -10%,
+            rgba(94, 92, 230, 0.1),
+            transparent 60%
+        ),
+        radial-gradient(
+            900px 500px at 110% 110%,
+            rgba(20, 115, 230, 0.06),
+            transparent 60%
+        ),
+        var(--bg);
 }
 
 code,
@@ -38,19 +73,63 @@ samp {
 }
 
 /*
- * Animações utilitárias para overlays (Dialog, Dropdown, Toast).
+ * Scrollbars no estilo Tahoe: finas, semi-transparentes, somem quando
+ * inativas. Estilo aplicado globalmente para dar coerência ao app.
+ */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.18);
+    border-radius: 999px;
+    border: 2.5px solid transparent;
+    background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.32);
+    border: 2.5px solid transparent;
+    background-clip: content-box;
+}
+
+/*
+ * Seleção de texto com a cor de acento, mantendo legibilidade.
+ */
+::selection {
+    background: var(--accent-soft);
+    color: var(--ink);
+}
+
+/*
+ * ─────────────────────────────────────────────────────────────────
+ * Animações globais.
  *
- * Mantemos os keyframes aqui (em vez de instalar `tailwindcss-animate`)
+ * Mantemos os keyframes aqui em vez de instalar `tailwindcss-animate`
  * porque são poucos e específicos. Os primitivos consomem via classes
- * `animate-fade-in`, `animate-fade-out`, `animate-zoom-in` e
- * `animate-zoom-out`, combinadas com seletores `data-[state=open]` /
- * `data-[state=closed]` do Radix.
+ * `animate-fade-in`, `animate-zoom-in`, `animate-slide-up`, etc.,
+ * combinadas com seletores `data-[state=open]` / `data-[state=closed]`
+ * do Radix.
+ *
+ * Todas usam `--ease-out` (curva spring discreta) e duração padrão
+ * `--dur-normal` (180ms) para que as transições sejam perceptíveis
+ * sem dar a sensação de "lentidão".
+ * ─────────────────────────────────────────────────────────────────
  */
 @keyframes navedesk-fade-in {
     from {
         opacity: 0;
     }
-
     to {
         opacity: 1;
     }
@@ -60,7 +139,6 @@ samp {
     from {
         opacity: 1;
     }
-
     to {
         opacity: 0;
     }
@@ -71,7 +149,6 @@ samp {
         opacity: 0;
         transform: translate(-50%, -50%) scale(0.96);
     }
-
     to {
         opacity: 1;
         transform: translate(-50%, -50%) scale(1);
@@ -83,25 +160,149 @@ samp {
         opacity: 1;
         transform: translate(-50%, -50%) scale(1);
     }
-
     to {
         opacity: 0;
         transform: translate(-50%, -50%) scale(0.96);
     }
 }
 
+@keyframes navedesk-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes navedesk-slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes navedesk-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    60% {
+        transform: scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes navedesk-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
 @utility animate-fade-in {
-    animation: navedesk-fade-in 150ms ease-out;
+    animation: navedesk-fade-in var(--dur-normal) var(--ease-out);
 }
 
 @utility animate-fade-out {
-    animation: navedesk-fade-out 150ms ease-in;
+    animation: navedesk-fade-out var(--dur-fast) var(--ease-out);
 }
 
 @utility animate-zoom-in {
-    animation: navedesk-zoom-in 150ms ease-out;
+    animation: navedesk-zoom-in var(--dur-normal) var(--ease-out);
 }
 
 @utility animate-zoom-out {
-    animation: navedesk-zoom-out 150ms ease-in;
+    animation: navedesk-zoom-out var(--dur-fast) var(--ease-out);
+}
+
+@utility animate-slide-up {
+    animation: navedesk-slide-up var(--dur-normal) var(--ease-out);
+}
+
+@utility animate-slide-down {
+    animation: navedesk-slide-down var(--dur-normal) var(--ease-out);
+}
+
+@utility animate-pop {
+    animation: navedesk-pop var(--dur-slow) var(--ease-spring);
+}
+
+/*
+ * `.glass-panel` — utilitário para qualquer superfície que deva ser
+ * translúcida no estilo Liquid Glass. Aplicado em Sidebar, Topbar,
+ * Dialog, Dropdown, Toast e Card de login.
+ *
+ * A combinação `backdrop-filter` + fundo semi-transparente cria a
+ * vibrância de macOS. O `--webkit-` é necessário porque o Safari só
+ * implementa o prefixado para `backdrop-filter`.
+ */
+@utility glass-panel {
+    -webkit-backdrop-filter: var(--glass);
+    backdrop-filter: var(--glass);
+    background: var(--bg-elev-translucent);
+}
+
+@utility glass-panel-subtle {
+    -webkit-backdrop-filter: var(--glass-subtle);
+    backdrop-filter: var(--glass-subtle);
+}
+
+@utility glass-panel-intense {
+    -webkit-backdrop-filter: var(--glass-intense);
+    backdrop-filter: var(--glass-intense);
+}
+
+/*
+ * Hairline 0.5px no estilo macOS — Tailwind v4 aceita arbitrários,
+ * mas centralizar via utilitário deixa o intent explícito.
+ */
+@utility border-hairline {
+    border-width: 0.5px;
+}
+
+/*
+ * Lift sutil em hover/focus — cards e elementos que devem responder
+ * ao hover ganham translação vertical de 1px e sombra mais alta.
+ * Padrão consistente em toda a aplicação para "afirmar" interatividade.
+ *
+ * Implementado como classe CSS plana (em vez de `@utility`) porque
+ * precisamos do seletor `:hover`, que o `@utility` do Tailwind v4
+ * não trata em uma única declaração.
+ */
+.hover-lift {
+    transition:
+        transform var(--dur-normal) var(--ease-out),
+        box-shadow var(--dur-normal) var(--ease-out);
+}
+
+.hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--sh-lift);
+}
+
+/*
+ * Acessibilidade — usuários com `prefers-reduced-motion` recebem
+ * animações instantâneas. Padrão recomendado pelo WCAG 2.1 (2.3.3).
+ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+        scroll-behavior: auto !important;
+    }
 }

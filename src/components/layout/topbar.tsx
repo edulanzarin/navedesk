@@ -159,12 +159,13 @@ export function Topbar({
     return (
         <header
             className={cn(
-                "flex h-16 items-center justify-between border-b border-(--line) bg-(--bg-elev) px-6",
+                "sticky top-0 z-10 flex h-16 items-center justify-between border-b border-hairline border-(--line) glass-panel px-6",
+                "bg-(--bg-topbar)",
                 className,
             )}
         >
             <div className="min-w-0">
-                <h1 className="truncate text-base font-medium text-(--ink)">
+                <h1 className="truncate text-[17px] font-semibold tracking-tight text-(--ink)">
                     {resolvedTitle}
                 </h1>
                 {subtitle ? (
@@ -184,7 +185,7 @@ export function Topbar({
                         <button
                             type="button"
                             aria-label={`Menu da conta de ${user.name}`}
-                            className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
+                            className="rounded-full outline-none transition-transform duration-[var(--dur-fast)] hover:scale-105 focus-visible:ring-2 focus-visible:ring-(--accent) focus-visible:ring-offset-2"
                         >
                             <Avatar
                                 name={user.name}

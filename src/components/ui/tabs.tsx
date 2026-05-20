@@ -43,7 +43,7 @@ const TabsList = React.forwardRef<
         <TabsPrimitive.List
             ref={ref}
             className={cn(
-                "inline-flex items-center rounded-(--r-3) bg-(--bg-sunk) p-1 gap-1",
+                "inline-flex items-center rounded-(--r-3) bg-black/[0.05] p-1 gap-0.5",
                 className,
             )}
             {...props}
@@ -61,9 +61,9 @@ const TabsTrigger = React.forwardRef<
             className={cn(
                 // Layout base do gatilho.
                 "inline-flex items-center justify-center whitespace-nowrap",
-                "px-3 py-1.5 rounded-(--r-2) text-sm font-medium",
+                "px-3 py-1 rounded-(--r-2) text-[12.5px] font-medium tracking-tight",
                 // Estado inativo — texto secundário, transição suave.
-                "text-(--ink-3) transition-colors duration-150 ease-out",
+                "text-(--ink-2) transition-all duration-[var(--dur-fast)] ease-[var(--ease-out)]",
                 // Foco visível com ring no token de acento.
                 "outline-none focus-visible:ring-2 focus-visible:ring-(--accent)",
                 "focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg-sunk)",
@@ -71,7 +71,7 @@ const TabsTrigger = React.forwardRef<
                 "disabled:pointer-events-none disabled:opacity-50",
                 // Estado ativo (data-state="active" exposto pelo Radix).
                 "data-[state=active]:bg-(--bg-elev) data-[state=active]:text-(--ink)",
-                "data-[state=active]:shadow-(--sh-1)",
+                "data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.08)]",
                 className,
             )}
             {...props}

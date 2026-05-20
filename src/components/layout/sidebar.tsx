@@ -262,12 +262,12 @@ function SidebarLink({
             aria-current={active ? "page" : undefined}
             className={cn(
                 // base — linha clicável com ícone à esquerda e badge à direita
-                "group flex h-9 items-center gap-2 rounded-(--r-2) px-2.5 text-sm",
-                "transition-colors duration-150 ease-out",
+                "group flex h-9 items-center gap-2.5 rounded-(--r-2) px-2.5 text-[13.5px] font-medium tracking-tight",
+                "transition-all duration-[var(--dur-fast)] ease-[var(--ease-out)]",
                 "outline-none focus-visible:ring-2 focus-visible:ring-(--accent)",
                 active
-                    ? "bg-(--accent-soft) text-(--accent)"
-                    : "text-(--ink-2) hover:bg-(--accent-soft-2)",
+                    ? "bg-(--accent) text-white shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_1px_3px_var(--accent-glow)]"
+                    : "text-(--ink-2) hover:bg-black/[0.04] hover:text-(--ink)",
             )}
         >
             <Icon aria-hidden="true" className="size-4 shrink-0" />
@@ -276,10 +276,10 @@ function SidebarLink({
                 <span
                     aria-label={`${count} ${count === 1 ? "item" : "itens"}`}
                     className={cn(
-                        "inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-(--r-pill) px-1.5 text-[11px] font-medium tabular-nums",
+                        "inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-(--r-pill) px-1.5 text-[11px] font-semibold tabular-nums",
                         active
-                            ? "bg-(--accent) text-(--accent-ink)"
-                            : "bg-(--bg-sunk) text-(--ink-2)",
+                            ? "bg-white/22 text-white"
+                            : "bg-black/[0.06] text-(--ink-3) group-hover:bg-black/[0.08]",
                     )}
                 >
                     {count}
@@ -309,30 +309,20 @@ export function Sidebar({ user, counts, active }: SidebarProps) {
     return (
         <aside
             aria-label="Navegação principal"
-            className="flex h-full w-60 flex-col border-r border-(--line) bg-(--bg-rail)"
+            className="flex h-full w-60 flex-col border-r border-hairline border-(--line) bg-(--bg-rail) glass-panel"
         >
             {/* Cabeçalho da marca */}
-            <div className="flex h-14 items-center gap-2 border-b border-(--line-soft) px-4">
-                <div
-                    aria-hidden="true"
-                    className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-(--r-2) bg-(--accent-soft)"
-                >
-                    {/* Logo carregado de `public/`. `next/image` cuida do
-                        sizing responsivo e mantém a imagem nítida em
-                        telas HiDPI. O fallback de fundo `--accent-soft`
-                        aparece caso o arquivo não exista (apenas um
-                        retângulo suave, sem letra placeholder). */}
-                    <Image
-                        src={LOGO_PATH}
-                        alt=""
-                        width={32}
-                        height={32}
-                        className="size-8 object-contain"
-                        priority
-                    />
-                </div>
+            <div className="flex h-16 items-center gap-2.5 border-b border-hairline border-(--line-soft) px-4">
+                <Image
+                    src={LOGO_PATH}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="size-8 shrink-0 object-contain"
+                    priority
+                />
                 <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-(--ink)">
+                    <div className="truncate text-sm font-semibold tracking-tight text-(--ink)">
                         {BRAND_NAME}
                     </div>
                     <div className="truncate text-xs text-(--ink-3)">
@@ -353,7 +343,7 @@ export function Sidebar({ user, counts, active }: SidebarProps) {
                             return (
                                 <li
                                     key={`section-${idx}`}
-                                    className="px-2.5 pb-1 pt-4 text-[11px] font-medium uppercase tracking-wide text-(--ink-4)"
+                                    className="px-2.5 pb-1 pt-4 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-(--ink-4)"
                                 >
                                     {entry.label}
                                 </li>
@@ -379,8 +369,8 @@ export function Sidebar({ user, counts, active }: SidebarProps) {
             </nav>
 
             {/* Rodapé com identidade do usuário */}
-            <div className="border-t border-(--line-soft) px-3 py-3">
-                <div className="flex items-center gap-2">
+            <div className="border-t border-hairline border-(--line-soft) px-3 py-3">
+                <div className="flex items-center gap-2.5 rounded-(--r-2) p-1.5 transition-colors hover:bg-black/[0.04]">
                     <Avatar
                         name={user.name}
                         size="md"
