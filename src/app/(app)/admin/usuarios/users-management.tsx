@@ -39,7 +39,10 @@
 
 import * as React from "react";
 
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+import { Plus, Search } from "lucide-react";
 
 import {
     createUserAction,
@@ -80,6 +83,9 @@ export interface UsersManagementProps {
     users: UserRow[];
     departments: DepartmentRow[];
     currentUserId: string;
+    currentQuery: string;
+    hasPrevious: boolean;
+    nextCursor: string | null;
 }
 
 interface CreateFormState {
@@ -102,17 +108,52 @@ export function UsersManagement({
     users: initialUsers,
     departments,
     currentUserId,
+    currentQuery,
+    hasPrevious,
+    nextCursor,
 }: UsersManagementProps): React.ReactElement {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
     // Cópia local para refletir mutações (alteração de papel, desativação)
     // sem precisar aguardar navegação. O Server Action também já chama
     // `revalidatePath`, então a próxima navegação trará a mesma lista.
     const [users, setUsers] = React.useState<UserRow[]>(initialUsers);
+    // Quando paginação ou busca mudam, a página recarrega via Server
+    // Component e `initialUsers` chega novo. Sincroniza o estado local.
+    React.useEffect(() => {
+        setUsers(initialUsers);
+    }, [initialUsers]);
+
+    const [searchInput, setSearchInput] = React.useState(currentQuery);
+    React.useEffect(() => {
+        setSearchInput(currentQuery);
+    }, [currentQuery]);
+
     const [createOpen, setCreateOpen] = React.useState(false);
     const [form, setForm] = React.useState<CreateFormState>(EMPTY_FORM);
     const [pendingUserId, setPendingUserId] = React.useState<string | null>(
         null,
     );
     const [isCreating, startCreateTransition] = React.useTransition();
+
+    /**
+     * Submete a busca: navega para a mesma rota com `?q=` atualizado e
+     * sem `cursor` (volta pra primeira página). String vazia limpa o
+     * filtro.
+     */
+    function applySearch(value: string): void {
+        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        params.delete("cursor");
+        if (value.trim().length > 0) {
+            params.set("q", value.trim());
+        } else {
+            params.delete("q");
+        }
+        const qs = params.toString();
+        router.push(qs.length > 0 ? `${pathname}?${qs}` : pathname);
+    }
 
     // Mapa rápido id → nome para a coluna de departamento.
     const departmentNameById = React.useMemo(() => {
@@ -189,9 +230,6 @@ export function UsersManagement({
         startCreateTransition(async () => {
             const result = await createUserAction(payload);
             if (result.ok) {
-                setUsers((prev) => [...prev, result.data].sort((a, b) =>
-                    a.name.localeCompare(b.name, "pt-BR"),
-                ));
                 toast({
                     variant: "success",
                     title: "Usuário criado",
@@ -199,6 +237,11 @@ export function UsersManagement({
                 });
                 setCreateOpen(false);
                 resetForm();
+                // Recarrega o Server Component para que a nova lista
+                // (já com o usuário recém-criado) chegue. O broadcast
+                // SSE também vai disparar refresh para outros admins
+                // conectados.
+                router.refresh();
             } else {
                 // Cobre R14.3 (conflito de email): o serviço retorna
                 // `CONFLICT { field: "email" }` e a mensagem fica
@@ -325,7 +368,43 @@ export function UsersManagement({
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <form
+                    role="search"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        applySearch(searchInput);
+                    }}
+                    className="flex flex-1 items-center gap-2 sm:max-w-sm"
+                >
+                    <div className="relative flex-1">
+                        <Search
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-(--ink-3)"
+                        />
+                        <Input
+                            type="search"
+                            placeholder="Buscar por nome ou e-mail…"
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            className="pl-9"
+                            aria-label="Buscar usuários"
+                        />
+                    </div>
+                    {currentQuery.length > 0 ? (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                setSearchInput("");
+                                applySearch("");
+                            }}
+                        >
+                            Limpar
+                        </Button>
+                    ) : null}
+                </form>
                 <Button
                     variant="primary"
                     icon={<Plus />}
@@ -343,6 +422,43 @@ export function UsersManagement({
                 rows={users}
                 rowKey={(u) => u.id}
             />
+
+            {hasPrevious || nextCursor ? (
+                <div className="mt-2 flex items-center justify-between">
+                    {hasPrevious ? (
+                        <Button variant="default" asChild>
+                            <Link
+                                href={
+                                    currentQuery.length > 0
+                                        ? `${pathname}?q=${encodeURIComponent(currentQuery)}`
+                                        : pathname
+                                }
+                            >
+                                ← Voltar ao início
+                            </Link>
+                        </Button>
+                    ) : (
+                        <span aria-hidden="true" />
+                    )}
+                    {nextCursor ? (
+                        <Button variant="default" asChild>
+                            <Link
+                                href={(() => {
+                                    const params = new URLSearchParams();
+                                    if (currentQuery.length > 0)
+                                        params.set("q", currentQuery);
+                                    params.set("cursor", nextCursor);
+                                    return `${pathname}?${params.toString()}`;
+                                })()}
+                            >
+                                Próxima página →
+                            </Link>
+                        </Button>
+                    ) : (
+                        <span aria-hidden="true" />
+                    )}
+                </div>
+            ) : null}
 
             <Dialog
                 open={createOpen}

@@ -25,6 +25,7 @@ import {
     type UserRow,
 } from "@/db/repositories/users.repo";
 import { canManageUsers } from "@/lib/policies";
+import { publishEvent } from "@/lib/realtime";
 import {
     ChangePasswordSchema,
     CreateUserSchema,
@@ -146,6 +147,7 @@ export async function createUser(
             departmentId: input.departmentId,
             passwordHash,
         });
+        await publishEvent(db, { type: "users_changed" });
         return { ok: true, data: row };
     } catch (err) {
         if (isUniqueViolation(err)) {
@@ -198,6 +200,8 @@ export async function deactivateUser(
         };
     }
 
+    await publishEvent(db, { type: "users_changed" });
+
     return { ok: true, data: row };
 }
 
@@ -239,6 +243,8 @@ export async function updateRole(
             },
         };
     }
+
+    await publishEvent(db, { type: "users_changed" });
 
     return { ok: true, data: row };
 }
@@ -385,6 +391,7 @@ export async function registerUser(
             departmentId: input.departmentId,
             passwordHash,
         });
+        await publishEvent(db, { type: "users_changed" });
         return {
             ok: true,
             data: { id: row.id, email: row.email, name: row.name },

@@ -10,7 +10,7 @@
  * Validates: R14.
  */
 
-import { asc, and, eq, inArray } from "drizzle-orm";
+import { asc, and, eq, gt, ilike, inArray, or, type SQL } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
 import { users } from "@/db/schema";
@@ -63,6 +63,96 @@ export async function findById(
  */
 export async function listAll(db: Database): Promise<UserRow[]> {
     return db.select().from(users).orderBy(asc(users.name));
+}
+
+/**
+ * Filtros aceitos por `listUsersPage`. Todos opcionais.
+ */
+export interface UserListFilters {
+    /** Busca textual (`ILIKE %q%`) em `name` ou `email`. */
+    q?: string;
+    /** Filtra pelo papel quando informado. */
+    role?: Role;
+}
+
+/** Cursor opaco — `(name, id)` da última linha da página anterior. */
+export interface UserListCursor {
+    name: string;
+    id: string;
+}
+
+export interface UserListPage {
+    rows: UserRow[];
+    nextCursor: UserListCursor | null;
+}
+
+/**
+ * Lista usuários paginados via cursor sobre `(name ASC, id ASC)`.
+ *
+ * Suporta busca textual em nome/email e filtro por papel. Retorna até
+ * `limit` linhas + um cursor opaco para a próxima página quando
+ * houver mais resultados. Limite default 50, máximo 200.
+ *
+ * Por que `(name, id)` e não offset? Porque admins frequentemente
+ * acessam essa página enquanto cadastros novos chegam (broadcast SSE
+ * dispara refresh). Cursor estável evita pular ou repetir linhas
+ * quando uma inserção acontece entre páginas.
+ */
+export async function listUsersPage(
+    db: Database,
+    filters: UserListFilters = {},
+    cursor?: UserListCursor,
+    limit: number = 50,
+): Promise<UserListPage> {
+    const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 200);
+
+    const conditions: SQL[] = [];
+
+    if (filters.q !== undefined && filters.q.trim().length > 0) {
+        const pattern = `%${filters.q.trim()}%`;
+        conditions.push(
+            or(ilike(users.name, pattern), ilike(users.email, pattern)) as SQL,
+        );
+    }
+    if (filters.role !== undefined) {
+        conditions.push(eq(users.role, filters.role));
+    }
+    if (cursor) {
+        // (name, id) > (cursor.name, cursor.id) na ordem ascendente.
+        conditions.push(
+            or(
+                gt(users.name, cursor.name),
+                and(
+                    eq(users.name, cursor.name),
+                    gt(users.id, cursor.id),
+                ),
+            ) as SQL,
+        );
+    }
+
+    const where =
+        conditions.length === 0
+            ? undefined
+            : conditions.length === 1
+                ? conditions[0]
+                : and(...conditions);
+
+    const baseQuery = db.select().from(users);
+    const filtered = where ? baseQuery.where(where) : baseQuery;
+    const rows = await filtered
+        .orderBy(asc(users.name), asc(users.id))
+        .limit(safeLimit + 1);
+
+    const hasNext = rows.length > safeLimit;
+    const pageRows = hasNext ? rows.slice(0, safeLimit) : rows;
+
+    let nextCursor: UserListCursor | null = null;
+    if (hasNext) {
+        const last = pageRows[pageRows.length - 1];
+        if (last) nextCursor = { name: last.name, id: last.id };
+    }
+
+    return { rows: pageRows, nextCursor };
 }
 
 /**

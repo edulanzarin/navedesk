@@ -58,7 +58,11 @@ const RECONNECT_DELAY_MS = 5_000;
  *   (criação, status, atribuição). Broadcast.
  */
 export interface RealtimeEvent {
-    type: "notification" | "ticket_changed" | "tickets_list_changed";
+    type:
+        | "notification"
+        | "ticket_changed"
+        | "tickets_list_changed"
+        | "users_changed";
     userId?: string;
     ticketId?: string;
 }

@@ -141,6 +141,7 @@ export function NotificationsBridge(_props: NotificationsBridgeProps) {
         source.addEventListener("notification", onNotification);
         source.addEventListener("ticket_changed", refresh);
         source.addEventListener("tickets_list_changed", refresh);
+        source.addEventListener("users_changed", refresh);
 
         // Erro/queda — o EventSource tenta reconectar sozinho. Só
         // logamos para diagnóstico em dev.
@@ -153,6 +154,7 @@ export function NotificationsBridge(_props: NotificationsBridgeProps) {
             source.removeEventListener("notification", onNotification);
             source.removeEventListener("ticket_changed", refresh);
             source.removeEventListener("tickets_list_changed", refresh);
+            source.removeEventListener("users_changed", refresh);
             source.close();
         };
     }, [router]);
