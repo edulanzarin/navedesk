@@ -49,6 +49,7 @@ import {
     deactivateUserAction,
     updateUserRoleAction,
 } from "@/actions/admin";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -261,14 +262,22 @@ export function UsersManagement({
             header: "Nome",
             sortKey: "name",
             cell: (u) => (
-                <span className="font-medium text-(--ink)">
-                    {u.name}
-                    {u.id === currentUserId ? (
-                        <span className="ml-2 text-xs text-(--ink-3)">
-                            (você)
-                        </span>
-                    ) : null}
-                </span>
+                <div className="flex items-center gap-2.5">
+                    <Avatar
+                        name={u.name}
+                        size="sm"
+                        {...(u.avatarColor ? { color: u.avatarColor } : {})}
+                        {...(u.avatarUrl ? { src: u.avatarUrl } : {})}
+                    />
+                    <span className="font-medium text-(--ink)">
+                        {u.name}
+                        {u.id === currentUserId ? (
+                            <span className="ml-2 text-xs text-(--ink-3)">
+                                (você)
+                            </span>
+                        ) : null}
+                    </span>
+                </div>
             ),
         },
         {
