@@ -30,7 +30,10 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
             <div
                 ref={ref}
                 className={cn(
-                    "rounded-(--r-4) bg-(--bg-elev) shadow-(--sh-1) border border-hairline border-(--line)",
+                    // Liquid glass por padrão — translúcido sobre o
+                    // wallpaper colorido. Páginas que precisarem de
+                    // contraste opaco podem sobrescrever com `bg-(--bg-elev)`.
+                    "rounded-(--r-4) glass-panel shadow-(--sh-1) border border-hairline border-(--line-glass)",
                     "transition-shadow duration-[var(--dur-normal)] ease-[var(--ease-out)]",
                     className,
                 )}

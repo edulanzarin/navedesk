@@ -184,7 +184,7 @@ export function DataTable<T>({
     return (
         <div
             className={cn(
-                "overflow-x-auto rounded-(--r-4) border border-hairline border-(--line) bg-(--bg-elev) shadow-(--sh-1)",
+                "overflow-x-auto rounded-(--r-4) border border-hairline border-(--line-glass) glass-panel shadow-(--sh-1)",
                 className,
             )}
         >

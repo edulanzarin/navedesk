@@ -16,11 +16,11 @@
     /* ── superfícies ──────────────────────────────────────── */
     --bg: #f3f3f6;
     --bg-elev: #ffffff;
-    --bg-elev-translucent: rgba(255, 255, 255, 0.78);
+    --bg-elev-translucent: rgba(255, 255, 255, 0.62);
     --bg-sunk: #ececef;
-    --bg-rail: rgba(248, 248, 250, 0.62);
-    --bg-overlay: rgba(255, 255, 255, 0.82);
-    --bg-topbar: rgba(255, 255, 255, 0.6);
+    --bg-rail: rgba(248, 248, 250, 0.5);
+    --bg-overlay: rgba(255, 255, 255, 0.78);
+    --bg-topbar: rgba(255, 255, 255, 0.5);
 
     /* ── linhas (hairlines 0.5px no estilo macOS) ─────────── */
     --line: rgba(0, 0, 0, 0.08);
