@@ -47,3 +47,7 @@ next-env.d.ts
 /playwright-report
 /test-results
 /playwright/.cache
+
+# Project uses pnpm; never track npm or yarn lock
+package-lock.json
+yarn.lock
