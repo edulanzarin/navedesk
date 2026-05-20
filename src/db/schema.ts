@@ -51,6 +51,28 @@ export const eventTypeEnum = pgEnum("event_type", [
     "closed",
 ]);
 
+/**
+ * Tipos de notificação enviados aos usuários.
+ *
+ * Cobrem o ciclo de vida operacional do ticket: criação (vai pra
+ * técnicos/admins), mudanças de estado/prioridade/atribuição (vão pra
+ * requester e/ou assignee), e mensagens (vão pra contraparte da
+ * conversa). Notas internas geram `message_internal` apenas para
+ * o responsável atual quando ele não é o autor.
+ */
+export const notificationTypeEnum = pgEnum("notification_type", [
+    "ticket_created",
+    "ticket_assigned",
+    "ticket_unassigned",
+    "ticket_status_changed",
+    "ticket_priority_changed",
+    "ticket_resolved",
+    "ticket_closed",
+    "message_public",
+    "message_internal",
+    "ticket_rated",
+]);
+
 // ---------------------------------------------------------------------------
 // Reference / configuration tables
 // ---------------------------------------------------------------------------
@@ -233,3 +255,58 @@ export const kbArticles = pgTable("kb_articles", {
         .notNull()
         .defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+/**
+ * Caixa de notificações pessoal de cada usuário.
+ *
+ * Cada linha é uma notificação dirigida a `userId`. Quando algo
+ * acontece em um ticket (criação, mudança de estado, mensagem), os
+ * serviços de domínio fazem fan-out: enfileiram uma linha aqui pra
+ * cada destinatário (técnicos no caso de criação; requester e/ou
+ * assignee no caso de updates).
+ *
+ * Convenções:
+ * - `readAt` permanece `null` enquanto não lida; é marcado com a hora
+ *   em que o usuário entra na página de notificações.
+ * - `actorId` é o autor da ação que gerou a notificação. `null` para
+ *   eventos automáticos (ex.: auto-fechamento de ticket pelo cron).
+ * - `ticketId` referencia o ticket alvo; `ON DELETE CASCADE` garante
+ *   que apagar um ticket apague suas notificações.
+ *
+ * Índice composto `(user_id, created_at DESC)` cobre a listagem
+ * paginada (mais recentes primeiro). Índice parcial `WHERE read_at IS
+ * NULL` acelera o badge de não-lidas, que é consultado a cada 30s
+ * via polling.
+ */
+export const notifications = pgTable(
+    "notifications",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        userId: uuid("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        ticketId: text("ticket_id").references(() => tickets.id, {
+            onDelete: "cascade",
+        }),
+        type: notificationTypeEnum("type").notNull(),
+        title: text("title").notNull(),
+        body: text("body"),
+        actorId: uuid("actor_id").references(() => users.id, {
+            onDelete: "set null",
+        }),
+        readAt: timestamp("read_at", { withTimezone: true }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+    },
+    (t) => ({
+        idxUserCreated: index("notifications_user_created_idx").on(
+            t.userId,
+            t.createdAt,
+        ),
+    }),
+);

@@ -41,6 +41,14 @@ import {
     transitionTicketStatus,
 } from "@/lib/ticket-state";
 import { nextTicketId } from "@/lib/ticket-id";
+import {
+    notifyTicketAssigned,
+    notifyTicketCreated,
+    notifyTicketPriorityChanged,
+    notifyTicketRated,
+    notifyTicketStatusChanged,
+    notifyTicketUnassigned,
+} from "@/services/notifications.service";
 import type {
     ActionResult,
     Priority,
@@ -199,6 +207,12 @@ export async function createTicket(
                     throw new AttachmentLinkError(attachmentId);
                 }
             }
+
+            // Fan-out de notificações para técnicos/admins (exceto o
+            // próprio autor). Roda dentro da mesma transação para que
+            // ticket criado e notificações sejam atômicos: se algo
+            // falhar aqui, a criação inteira faz rollback.
+            await notifyTicketCreated(executor, inserted, actor);
 
             return inserted;
         });
@@ -481,6 +495,17 @@ export async function changeTicketStatus(
             });
         }
 
+        // Fan-out de notificações. Usa a versão atualizada do ticket
+        // (`row`) para que `assigneeId` reflita uma eventual auto-
+        // atribuição que acabou de acontecer.
+        await notifyTicketStatusChanged(
+            executor,
+            row,
+            actor,
+            ticket.status,
+            nextStatus,
+        );
+
         return row;
     });
 
@@ -534,6 +559,14 @@ export async function changeTicketPriority(
             fromValue: ticket.priority,
             toValue: nextPriority,
         });
+
+        await notifyTicketPriorityChanged(
+            executor,
+            row,
+            actor,
+            ticket.priority,
+            nextPriority,
+        );
 
         return row;
     });
@@ -718,6 +751,8 @@ export async function rateTicket(
             toValue: String(ratingValue),
         });
 
+        await notifyTicketRated(executor, row, actor, ratingValue);
+
         return row;
     });
 
@@ -805,6 +840,19 @@ async function performAssign(
             });
         }
 
+        // Fan-out de notificações para o novo assignee (se ≠ ator) e
+        // para o requester. Roda apenas quando o assignee de fato
+        // mudou — o caso idempotente (mesmo assignee) já foi
+        // curto-circuitado no início desta função.
+        if (ticket.assigneeId !== nextAssigneeId) {
+            await notifyTicketAssigned(
+                executor,
+                row,
+                actor,
+                nextAssigneeId,
+            );
+        }
+
         return row;
     });
 
@@ -844,6 +892,16 @@ async function performUnassign(
             fromValue: ticket.assigneeId,
             toValue: null,
         });
+
+        // Notifica o assignee anterior e o requester.
+        if (ticket.assigneeId !== null) {
+            await notifyTicketUnassigned(
+                executor,
+                row,
+                actor,
+                ticket.assigneeId,
+            );
+        }
 
         return row;
     });

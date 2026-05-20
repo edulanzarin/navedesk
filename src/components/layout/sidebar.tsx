@@ -42,6 +42,7 @@ import { usePathname } from "next/navigation";
 
 import {
     AlertCircle,
+    Bell,
     Building2,
     Cog,
     Inbox,
@@ -68,6 +69,8 @@ export interface SidebarCounts {
     assigned: number;
     /** Tickets sem responsável (relevante para `tecnico`/`admin`). */
     unassigned: number;
+    /** Notificações não lidas do usuário corrente. */
+    unread: number;
 }
 
 export interface SidebarProps {
@@ -163,6 +166,14 @@ const ENTRIES: ReadonlyArray<SidebarEntry> = [
         href: "/kb",
         icon: Library,
         match: ["/kb"],
+    },
+    {
+        kind: "item",
+        label: "Notificações",
+        href: "/notificacoes",
+        icon: Bell,
+        countKey: "unread",
+        match: ["/notificacoes"],
     },
 
     { kind: "section", label: "Administração", roles: ["admin"] },

@@ -111,6 +111,48 @@ export async function findByIds(
 }
 
 /**
+ * Lista usuários ativos por papel, ordenados por nome (A→Z).
+ *
+ * Usado no fan-out de notificações (ex.: avisar todos os técnicos
+ * quando um ticket é criado). O filtro `active = true` garante que
+ * usuários desligados não recebam mais notificações pendentes que
+ * acumulariam para sempre.
+ */
+export async function listByRole(
+    db: Database,
+    role: Role,
+): Promise<UserRow[]> {
+    return db
+        .select()
+        .from(users)
+        .where(and(eq(users.role, role), eq(users.active, true)))
+        .orderBy(asc(users.name));
+}
+
+/**
+ * Lista usuários ativos com qualquer um dos papéis informados,
+ * ordenados por nome (A→Z). Versão multi-papel de `listByRole` para
+ * fan-out que combine `tecnico` e `admin` (caso típico de criação
+ * de ticket).
+ */
+export async function listByRoles(
+    db: Database,
+    roles: readonly Role[],
+): Promise<UserRow[]> {
+    if (roles.length === 0) return [];
+    return db
+        .select()
+        .from(users)
+        .where(
+            and(
+                inArray(users.role, roles as Role[]),
+                eq(users.active, true),
+            ),
+        )
+        .orderBy(asc(users.name));
+}
+
+/**
  * Insere um usuário e retorna a linha persistida.
  *
  * Conflitos de email (constraint `users.email` UNIQUE) são propagados como

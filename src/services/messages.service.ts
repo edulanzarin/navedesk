@@ -28,6 +28,7 @@ import {
 import { findTicketById } from "@/db/repositories/tickets.repo";
 import { canPostInternalNote, canViewTicket } from "@/lib/policies";
 import { type PostMessageInput } from "@/lib/schemas";
+import { notifyMessagePosted } from "@/services/notifications.service";
 import type { ActionResult, SessionUser } from "@/types/domain";
 
 /**
@@ -117,11 +118,26 @@ export async function postMessage(
         };
     }
 
-    const row = await insertMessage(db, {
-        ticketId: ticket.id,
-        authorId: actor.id,
-        body: input.body,
-        isInternal: input.isInternal,
+    const row = await db.transaction(async (tx) => {
+        const inserted = await insertMessage(tx, {
+            ticketId: ticket.id,
+            authorId: actor.id,
+            body: input.body,
+            isInternal: input.isInternal,
+        });
+
+        // Fan-out de notificações para a contraparte da conversa
+        // (assignee ou requester, dependendo do autor). Em transação
+        // pra que mensagem e notificações vivam ou morram juntas.
+        await notifyMessagePosted(
+            tx,
+            ticket,
+            actor,
+            input.isInternal,
+            input.body,
+        );
+
+        return inserted;
     });
 
     return { ok: true, data: row };

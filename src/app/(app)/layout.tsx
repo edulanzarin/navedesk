@@ -50,7 +50,10 @@ import { db } from "@/db/client";
 import { tickets } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { BRAND_NAME } from "@/lib/brand";
+import { countUnread as countUnreadNotifications } from "@/services/notifications.service";
 import type { SessionUser } from "@/types/domain";
+
+import { NotificationsBridge } from "./notifications-bridge";
 
 /**
  * Conta linhas em `tickets` com a composição AND das condições
@@ -108,13 +111,16 @@ async function getSidebarCounts(user: SessionUser): Promise<SidebarCounts> {
         ? Promise.resolve(0)
         : countTickets(isNull(tickets.assigneeId), ne(tickets.status, "fechado"));
 
-    const [open, assigned, unassigned] = await Promise.all([
+    const unreadCountP = countUnreadNotifications(user.id);
+
+    const [open, assigned, unassigned, unread] = await Promise.all([
         openCountP,
         assignedCountP,
         unassignedCountP,
+        unreadCountP,
     ]);
 
-    return { open, assigned, unassigned };
+    return { open, assigned, unassigned, unread };
 }
 
 /**
@@ -165,6 +171,7 @@ export default async function AppLayout({
                     <div className="animate-slide-up">{children}</div>
                 </main>
             </div>
+            <NotificationsBridge initialUnread={counts.unread} />
         </div>
     );
 }
