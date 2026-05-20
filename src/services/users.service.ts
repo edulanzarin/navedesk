@@ -28,6 +28,7 @@ import { canManageUsers } from "@/lib/policies";
 import {
     ChangePasswordSchema,
     CreateUserSchema,
+    RegisterSchema,
     UpdateAvatarSchema,
 } from "@/lib/schemas";
 import type { ActionResult, Role, SessionUser } from "@/types/domain";
@@ -329,6 +330,78 @@ export async function changePassword(
     }
 
     return { ok: true, data: null };
+}
+
+/**
+ * Auto-cadastro público — usado pela rota `/cadastro` para que cada
+ * funcionário crie a própria conta sem depender do admin.
+ *
+ * Diferenças importantes em relação a `createUser`:
+ *
+ * - **Sem RBAC**: não exige um `actor` autenticado (a rota é pública).
+ * - **Papel fixo**: o serviço força `role = "solicitante"`,
+ *   independentemente do que vier no payload (defesa em profundidade
+ *   sobre o schema, que nem expõe esse campo).
+ * - **Sem retorno do hash**: devolve apenas `id/email/name` para que a
+ *   action não exponha o `passwordHash` na borda RSC.
+ *
+ * Pipeline:
+ *
+ * 1. Valida `rawInput` via `RegisterSchema.safeParse`. Falha →
+ *    `VALIDATION_ERROR` apontando o primeiro campo inválido.
+ * 2. Calcula `passwordHash` via `bcrypt(cost=12)` (mesmo custo dos
+ *    demais fluxos).
+ * 3. Persiste com `role="solicitante"` e `active=true`. Conflito de
+ *    email (`SQLSTATE 23505`) vira `CONFLICT { field: "email" }` para
+ *    que o formulário marque o campo correto.
+ *
+ * Outros erros do driver propagam como exceção (HTTP 500).
+ */
+export async function registerUser(
+    rawInput: unknown,
+): Promise<ActionResult<{ id: string; email: string; name: string }>> {
+    const parsed = RegisterSchema.safeParse(rawInput);
+    if (!parsed.success) {
+        const issue = parsed.error.issues[0];
+        const field = issue?.path.join(".") || undefined;
+        return {
+            ok: false,
+            error: {
+                code: "VALIDATION_ERROR",
+                message: issue?.message ?? "Dados inválidos.",
+                ...(field ? { field } : {}),
+            },
+        };
+    }
+
+    const input = parsed.data;
+    const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
+
+    try {
+        const row = await insertUser(db, {
+            email: input.email,
+            name: input.name,
+            role: "solicitante",
+            departmentId: input.departmentId,
+            passwordHash,
+        });
+        return {
+            ok: true,
+            data: { id: row.id, email: row.email, name: row.name },
+        };
+    } catch (err) {
+        if (isUniqueViolation(err)) {
+            return {
+                ok: false,
+                error: {
+                    code: "CONFLICT",
+                    message: "Já existe uma conta com esse e-mail.",
+                    field: "email",
+                },
+            };
+        }
+        throw err;
+    }
 }
 
 /**

@@ -137,6 +137,20 @@ export const LOGIN_RATE_LIMIT: RateLimitOptions = {
 export const loginRateLimiter: RateLimiter = new InMemoryRateLimiter();
 
 /**
+ * Limite do auto-cadastro público em `/cadastro`: cinco contas por
+ * hora, por IP. É deliberadamente baixo porque a rota cria registros
+ * persistentes — diferente do login, cada tentativa bem-sucedida
+ * deixa "pegada" no banco e abusos custam mais para reverter.
+ */
+export const REGISTER_RATE_LIMIT: RateLimitOptions = {
+    limit: 5,
+    windowMs: 60 * 60_000,
+} as const;
+
+/** Instância única usada pela rota de cadastro. */
+export const registerRateLimiter: RateLimiter = new InMemoryRateLimiter();
+
+/**
  * Limite oficial do `/api/uploads`: trinta uploads por minuto, por usuário
  * autenticado. Aplicado pelo route handler de upload (task 18.2), que usa
  * `user.id` da sessão como chave.

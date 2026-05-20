@@ -23,7 +23,12 @@ import { revalidatePath } from "next/cache";
 import { AuthError } from "next-auth";
 
 import { auth, signIn, signOut, updateSession } from "@/lib/auth";
-import { LOGIN_RATE_LIMIT, loginRateLimiter } from "@/lib/rate-limit";
+import {
+    LOGIN_RATE_LIMIT,
+    loginRateLimiter,
+    REGISTER_RATE_LIMIT,
+    registerRateLimiter,
+} from "@/lib/rate-limit";
 import * as usersService from "@/services/users.service";
 import type { ActionResult, SessionUser } from "@/types/domain";
 
@@ -229,4 +234,68 @@ export async function updateAvatarAction(
         };
     }
     return result;
+}
+
+
+/**
+ * Server Action que processa o submit do formulário de `/cadastro`.
+ *
+ * Permite que qualquer pessoa crie uma conta como `solicitante` sem
+ * precisar de admin. Aplicada por enquanto enquanto a base de
+ * funcionários é populada — o admin pode posteriormente promover
+ * cada conta para `tecnico`/`admin` quando necessário.
+ *
+ * Etapas:
+ *
+ * 1. Resolve o IP do cliente e consulta `registerRateLimiter` (5
+ *    cadastros por hora por IP). Limite estourado → `RATE_LIMITED`.
+ *    Janela apertada para conter abuso, já que cada cadastro
+ *    bem-sucedido gera registro persistente no banco.
+ * 2. Delega para `users.service.registerUser`, que valida o payload,
+ *    força `role="solicitante"` e persiste o hash via `bcrypt(cost=12)`.
+ * 3. Após cadastro bem-sucedido, faz `signIn("credentials")` para
+ *    levar o usuário direto à aplicação. Se o auto-login falhar (por
+ *    qualquer motivo), o cadastro continua válido — devolvemos
+ *    sucesso e o cliente redireciona para `/login`.
+ */
+export async function registerAction(
+    rawInput: unknown,
+): Promise<ActionResult<null>> {
+    const ip = await resolveClientIp();
+    const rate = registerRateLimiter.check(
+        `register:${ip}`,
+        REGISTER_RATE_LIMIT,
+    );
+    if (!rate.allowed) {
+        return {
+            ok: false,
+            error: {
+                code: "RATE_LIMITED",
+                message:
+                    "Muitas tentativas de cadastro. Tente novamente daqui a pouco.",
+            },
+        };
+    }
+
+    const result = await usersService.registerUser(rawInput);
+    if (!result.ok) {
+        return result;
+    }
+
+    // Auto-login após cadastro: tenta criar a sessão para que o usuário
+    // caia direto no dashboard. Em caso de falha (cenário improvável,
+    // mas mantemos o fallback resiliente), devolvemos sucesso mesmo
+    // assim — o cliente apenas redireciona para `/login`.
+    try {
+        const input = rawInput as { email: string; password: string };
+        await signIn("credentials", {
+            email: input.email,
+            password: input.password,
+            redirect: false,
+        });
+    } catch {
+        // Ignorado intencionalmente — o cadastro está concluído.
+    }
+
+    return { ok: true, data: null };
 }

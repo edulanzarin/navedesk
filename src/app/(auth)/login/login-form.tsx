@@ -182,6 +182,16 @@ export function LoginForm({ next }: LoginFormProps) {
             >
                 Entrar
             </Button>
+
+            <p className="text-center text-[12.5px] text-(--ink-3)">
+                Não tem conta?{" "}
+                <a
+                    href="/cadastro"
+                    className="font-medium text-(--accent) hover:opacity-80"
+                >
+                    Criar conta
+                </a>
+            </p>
         </form>
     );
 }

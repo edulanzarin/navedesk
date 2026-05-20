@@ -85,6 +85,40 @@ export const CreateUserSchema = z.object({
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 
 /**
+ * Entrada para auto-cadastro público em `/cadastro`.
+ *
+ * Diferenças em relação a `CreateUserSchema`:
+ *
+ * - Não aceita `role` — o serviço sempre cria como `solicitante`,
+ *   garantindo que ninguém escale privilégios pela URL pública.
+ * - `departmentId` é obrigatório (toda pessoa pertence a algum
+ *   departamento; é o que define o escopo da abertura de chamados).
+ * - `confirmPassword` é validado por `superRefine` para que o feedback
+ *   apareça no campo correto.
+ *
+ * Mesmos limites de senha do `CreateUserSchema` para coerência da
+ * política — 8..128 caracteres.
+ */
+export const RegisterSchema = z
+    .object({
+        email: z.string().email(),
+        name: z.string().trim().min(2).max(120),
+        departmentId: z.string().uuid(),
+        password: z.string().min(8).max(128),
+        confirmPassword: z.string().min(1),
+    })
+    .superRefine((data, ctx) => {
+        if (data.password !== data.confirmPassword) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["confirmPassword"],
+                message: "A confirmação não corresponde à senha.",
+            });
+        }
+    });
+export type RegisterInput = z.infer<typeof RegisterSchema>;
+
+/**
  * Entrada para atualização de uma política de SLA.
  *
  * `minutes` deve ser um inteiro positivo (mínimo 1 minuto); tickets já

@@ -89,9 +89,12 @@ export default auth((req) => {
 
 /**
  * Configuração do matcher do Next.js. Exclui rotas que nunca devem
- * passar pelo middleware (handlers do NextAuth, assets, favicon e a
- * própria tela de login) para evitar loops e custo desnecessário.
+ * passar pelo middleware (handlers do NextAuth, assets, favicon e as
+ * próprias telas de login/cadastro) para evitar loops e custo
+ * desnecessário.
  */
 export const config = {
-    matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico|login).*)"],
+    matcher: [
+        "/((?!api/auth|_next/static|_next/image|favicon.ico|login|cadastro).*)",
+    ],
 };
