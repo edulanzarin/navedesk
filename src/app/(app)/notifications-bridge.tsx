@@ -47,10 +47,16 @@ export function NotificationsBridge({
     const [unread, setUnread] = React.useState(initialUnread);
 
     // Sempre que o servidor recalcula (router.refresh ou navegação),
-    // o `initialUnread` chega novo via prop. Sincronizamos o estado
-    // local — assim o título da aba também reflete.
+    // o `initialUnread` chega novo via prop. Sincronizamos somente
+    // quando o servidor reporta MAIS do que temos localmente — assim,
+    // se uma notificação acabou de chegar via SSE e o `router.refresh`
+    // dispara antes do COMMIT do banco vir, não regredimos o badge a
+    // zero. O caminho explícito de "ler tudo" usa o evento SSE
+    // `notification_read`, que zera deliberadamente.
     React.useEffect(() => {
-        setUnread(initialUnread);
+        setUnread((current) =>
+            initialUnread > current ? initialUnread : current,
+        );
     }, [initialUnread]);
 
     // Título da aba — prefixa com `(N) ` quando há não-lidas. Restaura

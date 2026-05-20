@@ -250,19 +250,28 @@ export async function notifyTicketUnassigned(
 }
 
 /**
- * Fan-out de mensagem pública. Notifica a "outra ponta" da conversa:
- * se o autor é o solicitante, vai para o assignee atual; se é
- * técnico/admin, vai para o solicitante.
+ * Fan-out de mensagem pública. Notifica a contraparte da conversa.
  *
- * Quando ambos são técnicos/admins (ex.: técnico A respondendo num
- * ticket de outro técnico), notifica o requester apenas.
+ * Regras:
+ * - Solicitante respondeu: notifica o assignee atual. Se o ticket
+ *   ainda não tem assignee, notifica todos os técnicos+admins
+ *   ativos — sem isso, mensagens do solicitante ficariam sem
+ *   destinatário enquanto o ticket está na fila inicial.
+ * - Técnico/admin respondeu: notifica o solicitante.
+ * - Notas internas: apenas o assignee atual (se diferente do
+ *   autor); solicitantes nunca recebem notas internas.
+ *
+ * O corpo da notificação é deliberadamente genérico ("Nova
+ * mensagem"/"Nota interna") — não copia o conteúdo da mensagem para
+ * preservar privacidade no painel de notificações e nas notificações
+ * desktop, que podem aparecer fora do ambiente do usuário.
  */
 export async function notifyMessagePosted(
     executor: DbExecutor,
     ticket: Ticket,
     actor: SessionUser,
     isInternal: boolean,
-    bodyExcerpt: string,
+    _bodyExcerpt: string,
 ): Promise<void> {
     const targets = new Set<string>();
 
@@ -272,18 +281,22 @@ export async function notifyMessagePosted(
         if (ticket.assigneeId && ticket.assigneeId !== actor.id) {
             targets.add(ticket.assigneeId);
         }
-    } else {
-        // Mensagem pública: notifica a contraparte apropriada.
-        if (actor.id === ticket.requesterId) {
-            // Solicitante respondeu — avisa o assignee.
-            if (ticket.assigneeId && ticket.assigneeId !== actor.id) {
-                targets.add(ticket.assigneeId);
-            }
+    } else if (actor.id === ticket.requesterId) {
+        // Solicitante respondeu.
+        if (ticket.assigneeId && ticket.assigneeId !== actor.id) {
+            // Tem responsável → notifica só ele.
+            targets.add(ticket.assigneeId);
         } else {
-            // Técnico/admin respondeu — avisa o solicitante.
-            if (ticket.requesterId !== actor.id) {
-                targets.add(ticket.requesterId);
+            // Sem responsável → escala para a fila de técnicos+admins.
+            const fila = await listByRoles(executor, ["tecnico", "admin"]);
+            for (const u of fila) {
+                if (u.id !== actor.id) targets.add(u.id);
             }
+        }
+    } else {
+        // Técnico/admin respondeu — avisa o solicitante.
+        if (ticket.requesterId !== actor.id) {
+            targets.add(ticket.requesterId);
         }
     }
 
@@ -292,7 +305,9 @@ export async function notifyMessagePosted(
     const type = isInternal ? "message_internal" : "message_public";
     const titlePrefix = isInternal ? "Nota interna" : "Nova mensagem";
     const title = `${ticket.id}: ${titlePrefix}`;
-    const body = `${actor.name}: ${truncate(bodyExcerpt, 140)}`;
+    const body = `${actor.name} enviou ${
+        isInternal ? "uma nota interna" : "uma mensagem"
+    } no chamado.`;
 
     const rows: NotificationInsert[] = Array.from(targets).map((userId) => ({
         userId,
@@ -378,12 +393,6 @@ function collectTicketParties(ticket: Ticket, actorId: string): string[] {
         set.add(ticket.assigneeId);
     }
     return Array.from(set);
-}
-
-/** Trunca uma string para uso no `body` da notificação. */
-function truncate(input: string, max: number): string {
-    if (input.length <= max) return input;
-    return input.slice(0, max - 1).trimEnd() + "…";
 }
 
 /** Rótulos pt-BR de status (replica `lib/constants` evitando dependência circular). */
