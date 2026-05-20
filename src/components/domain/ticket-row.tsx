@@ -200,7 +200,7 @@ export function ticketColumns({
             header: "Atribuído",
             width: 140,
             cell: (row) =>
-                {row.assigneeName !== null ? (
+                row.assigneeName !== null ? (
                     <div className="flex min-w-0 items-center gap-2">
                         <Avatar
                             name={row.assigneeName}
