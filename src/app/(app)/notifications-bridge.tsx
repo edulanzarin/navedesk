@@ -1,34 +1,28 @@
 /**
- * `NotificationsBridge` — ponte entre o servidor e o navegador para
- * atualizações em tempo real.
+ * `NotificationsBridge` — ponte entre o servidor e o navegador.
  *
- * Comportamento:
+ * Responsabilidades:
  *
- * 1. **Pedido de permissão**: na primeira montagem, se o navegador
- *    suporta `Notification` e a permissão ainda é `default`, exibe
- *    um toast de cortesia perguntando se o usuário quer receber
- *    notificações desktop. Persiste o "já perguntei" em
- *    `localStorage` para não insistir.
+ * 1. **Pedido de permissão** — uma única vez, persistido em
+ *    `localStorage`, exibe um toast pedindo autorização para
+ *    notificações desktop nativas.
  *
- * 2. **EventSource (SSE)**: abre uma conexão persistente em
- *    `/api/events`. O servidor envia eventos do tipo `notification`,
- *    `ticket_changed` e `tickets_list_changed` em tempo real, vindos
- *    do canal `navedesk_events` no Postgres (LISTEN/NOTIFY) — sem
- *    polling.
- *
- * 3. **Reação aos eventos**:
+ * 2. **EventSource (SSE)** — abre `/api/events` e reage aos eventos
+ *    publicados via Postgres LISTEN/NOTIFY:
  *    - `notification`: dispara notificação desktop (quando permitida)
- *      e chama `router.refresh()` para atualizar o badge da Sidebar
- *      e a página de notificações se o usuário estiver nela.
- *    - `ticket_changed` / `tickets_list_changed`: chama
- *      `router.refresh()` para que Server Components reexecutem e
- *      mostrem dados frescos sem reload.
+ *      e atualiza o contador local incrementando.
+ *    - `notification_read`: zera o contador local imediatamente.
+ *    - `ticket_changed` / `tickets_list_changed` / `users_changed`:
+ *      apenas refresh para Server Components reexecutarem.
  *
- * 4. **Reconexão**: o `EventSource` reconecta sozinho em caso de
- *    queda. Apenas garantimos cleanup quando o componente desmonta.
+ * 3. **Título da aba** — sempre que o contador muda, prefixa o
+ *    `document.title` com `(N) ` para que abas em segundo plano
+ *    mostrem o número de pendências. Restaura o título original
+ *    quando o contador zera.
  *
- * Esse componente fica sempre montado no `(app)/layout.tsx`, então
- * funciona em qualquer rota autenticada.
+ * 4. **Sincronização** — chama `router.refresh()` em todos os eventos
+ *    relevantes para que dados vindos do servidor (badge da Sidebar,
+ *    listagens) reflitam a mudança.
  */
 
 "use client";
@@ -42,16 +36,42 @@ import { toast } from "@/components/ui/use-toast";
 const PERMISSION_PROMPT_KEY = "navedesk:notifications-prompt-shown";
 
 export interface NotificationsBridgeProps {
-    /**
-     * Contador inicial calculado pelo Server Component pai. Mantido
-     * apenas para compatibilidade — o estado real vem do refresh
-     * disparado por cada evento SSE.
-     */
+    /** Contador inicial calculado pelo Server Component pai. */
     initialUnread: number;
 }
 
-export function NotificationsBridge(_props: NotificationsBridgeProps) {
+export function NotificationsBridge({
+    initialUnread,
+}: NotificationsBridgeProps) {
     const router = useRouter();
+    const [unread, setUnread] = React.useState(initialUnread);
+
+    // Sempre que o servidor recalcula (router.refresh ou navegação),
+    // o `initialUnread` chega novo via prop. Sincronizamos o estado
+    // local — assim o título da aba também reflete.
+    React.useEffect(() => {
+        setUnread(initialUnread);
+    }, [initialUnread]);
+
+    // Título da aba — prefixa com `(N) ` quando há não-lidas. Restaura
+    // o título base quando zera. Persistimos o título base num ref
+    // pra detectar quando o Next muda (ex.: navegação entre rotas).
+    const baseTitleRef = React.useRef<string>("");
+    React.useEffect(() => {
+        if (typeof document === "undefined") return;
+
+        // Captura o título atual sem o prefixo `(N) `, caso tenha.
+        const current = document.title;
+        const stripped = current.replace(/^\(\d+\)\s+/, "");
+
+        // Atualiza o título base sempre que ele muda externamente
+        // (mudança de rota, etc.). O regex remove qualquer prefixo
+        // antigo pra não acumular.
+        baseTitleRef.current = stripped;
+
+        document.title =
+            unread > 0 ? `(${unread}) ${stripped}` : stripped;
+    }, [unread]);
 
     // Pedido de permissão na primeira montagem.
     React.useEffect(() => {
@@ -64,8 +84,6 @@ export function NotificationsBridge(_props: NotificationsBridgeProps) {
         );
         if (alreadyAsked === "1") return;
 
-        // Marca antes de pedir para que não façamos prompt em loop
-        // caso o usuário simplesmente feche o toast.
         window.localStorage.setItem(PERMISSION_PROMPT_KEY, "1");
 
         toast({
@@ -97,15 +115,12 @@ export function NotificationsBridge(_props: NotificationsBridgeProps) {
 
         const source = new EventSource("/api/events");
 
-        // Trigger genérico para Server Components reexecutarem. Usado
-        // por todos os tipos de evento — o ganho de granularidade não
-        // compensa o complexo invalidate seletivo no Next 15.
         const refresh = () => router.refresh();
 
-        // Notificação pessoal: além de refrescar, dispara aviso
-        // desktop nativo se o usuário tiver concedido permissão.
         const onNotification = (ev: MessageEvent<string>) => {
-            // O usuário recebeu algo novo — UI atualiza.
+            // Incrementa o contador local imediatamente — a UI reage
+            // antes do `router.refresh()` completar.
+            setUnread((n) => n + 1);
             refresh();
 
             if (
@@ -138,20 +153,29 @@ export function NotificationsBridge(_props: NotificationsBridgeProps) {
             }
         };
 
+        // Quando o usuário lê tudo (ex.: entrou em /notificacoes em
+        // outra aba), zeramos imediatamente sem esperar o refresh.
+        const onNotificationRead = () => {
+            setUnread(0);
+            refresh();
+        };
+
         source.addEventListener("notification", onNotification);
+        source.addEventListener("notification_read", onNotificationRead);
         source.addEventListener("ticket_changed", refresh);
         source.addEventListener("tickets_list_changed", refresh);
         source.addEventListener("users_changed", refresh);
 
-        // Erro/queda — o EventSource tenta reconectar sozinho. Só
-        // logamos para diagnóstico em dev.
         source.onerror = () => {
-            // O readyState vai a CLOSED se o servidor recusou.
-            // Em CONNECTING, é apenas tentativa de reconexão.
+            // EventSource reconecta sozinho — apenas swallow.
         };
 
         return () => {
             source.removeEventListener("notification", onNotification);
+            source.removeEventListener(
+                "notification_read",
+                onNotificationRead,
+            );
             source.removeEventListener("ticket_changed", refresh);
             source.removeEventListener("tickets_list_changed", refresh);
             source.removeEventListener("users_changed", refresh);

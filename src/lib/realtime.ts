@@ -60,6 +60,7 @@ const RECONNECT_DELAY_MS = 5_000;
 export interface RealtimeEvent {
     type:
         | "notification"
+        | "notification_read"
         | "ticket_changed"
         | "tickets_list_changed"
         | "users_changed";

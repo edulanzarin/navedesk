@@ -351,7 +351,16 @@ export async function listForUser(
 
 /** Marca todas as não-lidas como lidas. Idempotente. */
 export async function markAllRead(userId: string): Promise<number> {
-    return repoMarkAllRead(db, userId);
+    const updated = await repoMarkAllRead(db, userId);
+    // Só publica quando algo mudou — evita ruído no canal e
+    // dispensa um refresh desnecessário em todos os clients.
+    if (updated > 0) {
+        await publishEvent(db, {
+            type: "notification_read",
+            userId,
+        });
+    }
+    return updated;
 }
 
 // ---------------------------------------------------------------------------
