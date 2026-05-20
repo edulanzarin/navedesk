@@ -60,7 +60,10 @@ const ROUTE_TITLES: ReadonlyArray<readonly [string, string]> = [
     ["/admin/categorias", "Categorias"],
     ["/admin/departamentos", "Departamentos"],
     ["/admin/sla", "Políticas de SLA"],
+    ["/admin/templates", "Modelos de ticket"],
     ["/admin/geral", "Configurações"],
+    ["/relatorios", "Relatórios"],
+    ["/notificacoes", "Notificações"],
     ["/perfil", "Perfil"],
 ] as const;
 

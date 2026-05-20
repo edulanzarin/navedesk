@@ -42,6 +42,7 @@ import {
 } from "@/lib/ticket-state";
 import { nextTicketId } from "@/lib/ticket-id";
 import { publishEvent } from "@/lib/realtime";
+import { logger } from "@/lib/logger";
 import {
     notifyTicketAssigned,
     notifyTicketCreated,
@@ -1064,7 +1065,10 @@ export async function bulkUpdateTickets(
             }
             updated++;
         } catch (err) {
-            console.error(`[bulkUpdate] ticket ${ticketId}:`, err);
+            logger.error(
+                { err, ticketId, scope: "bulkUpdateTickets" },
+                "ticket update failed in batch",
+            );
             failed++;
         }
     }

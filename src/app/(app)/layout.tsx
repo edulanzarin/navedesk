@@ -54,6 +54,7 @@ import { countUnread as countUnreadNotifications } from "@/services/notification
 import type { SessionUser } from "@/types/domain";
 
 import { NotificationsBridge } from "./notifications-bridge";
+import { TicketTabs } from "./ticket-tabs";
 
 /**
  * Conta linhas em `tickets` com a composição AND das condições
@@ -167,6 +168,7 @@ export default async function AppLayout({
                     user={user}
                     signOutAction={logoutAction}
                 />
+                <TicketTabs />
                 <main className="min-h-0 flex-1 overflow-auto px-7 py-6">
                     <div className="animate-slide-up">{children}</div>
                 </main>

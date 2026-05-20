@@ -43,6 +43,7 @@ import { usePathname } from "next/navigation";
 import {
     AlertCircle,
     Bell,
+    BarChart3,
     Building2,
     Cog,
     FileText,
@@ -178,6 +179,14 @@ const ENTRIES: ReadonlyArray<SidebarEntry> = [
     },
 
     { kind: "section", label: "Administração", roles: ["admin"] },
+    {
+        kind: "item",
+        label: "Relatórios",
+        href: "/relatorios",
+        icon: BarChart3,
+        roles: ["admin"],
+        match: ["/relatorios"],
+    },
     {
         kind: "item",
         label: "Usuários",

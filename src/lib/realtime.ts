@@ -36,6 +36,7 @@ import { sql } from "drizzle-orm";
 import { Client as PgClient } from "pg";
 
 import type { Database } from "@/db/client";
+import { logger, swallow } from "@/lib/logger";
 
 /** Canal único de notificações do Postgres. */
 const CHANNEL = "navedesk_events";
@@ -108,12 +109,12 @@ class RealtimeBus extends EventEmitter {
             });
 
             client.on("error", (err) => {
-                console.error("[realtime] pg client error:", err);
+                logger.error({ err, scope: "realtime" }, "pg client error");
                 this.scheduleReconnect();
             });
 
             client.on("end", () => {
-                console.warn("[realtime] pg client connection ended");
+                logger.warn({ scope: "realtime" }, "pg client connection ended");
                 this.scheduleReconnect();
             });
 
@@ -139,7 +140,10 @@ class RealtimeBus extends EventEmitter {
         this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null;
             this.ensureListener().catch((err) => {
-                console.error("[realtime] reconnect failed:", err);
+                logger.error(
+                    { err, scope: "realtime" },
+                    "reconnect failed",
+                );
             });
         }, RECONNECT_DELAY_MS);
     }
@@ -180,6 +184,6 @@ export async function publishEvent(
     try {
         await executor.execute(sql`SELECT pg_notify(${CHANNEL}, ${payload})`);
     } catch (err) {
-        console.error("[realtime] publishEvent failed:", err);
+        swallow("publishEvent failed", err, { scope: "realtime", event });
     }
 }
