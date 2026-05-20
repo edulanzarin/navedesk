@@ -4,7 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import { Toaster } from "@/components/ui/toaster";
 import { BRAND_DESCRIPTION, BRAND_NAME, LOGO_PATH } from "@/lib/brand";
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
 
@@ -19,12 +19,20 @@ export const metadata: Metadata = {
         apple: LOGO_PATH,
     },
     manifest: "/manifest.json",
-    themeColor: "#5E5CE6",
     appleWebApp: {
         capable: true,
         statusBarStyle: "default",
         title: BRAND_NAME,
     },
+};
+
+/**
+ * Em Next 15 `themeColor` foi movido de `metadata` para `viewport`
+ * export. Centralizamos aqui pra que todas as rotas filhas herdem o
+ * mesmo tom (índigo Tahoe usado em PWA install e barras de status).
+ */
+export const viewport: Viewport = {
+    themeColor: "#5E5CE6",
 };
 
 /**

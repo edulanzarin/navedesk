@@ -27,6 +27,14 @@ import { listDepartments } from "@/services/reads.service";
 
 import { RegisterForm } from "./register-form";
 
+/**
+ * Marca a rota como dinâmica — `listDepartments()` consulta o banco e
+ * o build estático do Next tentaria executar a query sem `DATABASE_URL`
+ * configurado, falhando com "DATABASE_URL is not set". Em runtime, a
+ * página é renderizada por requisição com a env já populada.
+ */
+export const dynamic = "force-dynamic";
+
 export default async function RegisterPage() {
     const departments = await listDepartments();
 
