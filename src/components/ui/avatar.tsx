@@ -86,7 +86,8 @@ export const Avatar = React.forwardRef<HTMLSpanElement, AvatarProps>(
                 role="img"
                 aria-label={name}
                 className={cn(
-                    "relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full font-medium text-white",
+                    "relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full font-semibold text-white",
+                    "shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.06)]",
                     sizeClasses[size],
                     className,
                 )}

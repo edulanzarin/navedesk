@@ -36,25 +36,37 @@ const buttonVariants = cva(
         // base
         "inline-flex items-center justify-center gap-2 whitespace-nowrap",
         "rounded-(--r-3) font-medium tracking-tight select-none",
-        "transition-colors duration-150 ease-out",
+        "transition-all duration-[var(--dur-fast)] ease-[var(--ease-out)]",
+        // press effect
+        "active:scale-[0.98]",
         // foco (token --accent)
         "outline-none focus-visible:ring-2 focus-visible:ring-(--accent)",
         "focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)",
         // disabled
-        "disabled:pointer-events-none disabled:opacity-50",
+        "disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
         // ícone tamanho padrão
         "[&_svg]:shrink-0 [&_svg]:size-4",
     ].join(" "),
     {
         variants: {
             variant: {
-                primary: "bg-(--accent) text-white hover:bg-(--accent-2)",
+                primary: [
+                    "bg-(--accent) text-white",
+                    "shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_1px_3px_var(--accent-glow)]",
+                    "hover:bg-(--accent-3) hover:shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_2px_8px_var(--accent-glow),0_4px_18px_rgba(94,92,230,0.25)]",
+                ].join(" "),
                 default: [
                     "bg-(--bg-elev) text-(--ink)",
-                    "border border-(--line) hover:bg-(--bg-sunk)",
+                    "border border-hairline border-(--line)",
+                    "shadow-(--sh-1)",
+                    "hover:bg-(--bg-sunk)",
                 ].join(" "),
-                ghost: "bg-transparent text-(--ink) hover:bg-(--accent-soft-2)",
-                danger: "bg-(--red) text-white hover:opacity-90",
+                ghost: "bg-transparent text-(--ink) hover:bg-black/[0.05]",
+                danger: [
+                    "bg-(--red) text-white",
+                    "shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_1px_3px_rgba(224,52,43,0.35)]",
+                    "hover:opacity-90",
+                ].join(" "),
             },
             size: {
                 sm: "h-8 px-3 text-sm",

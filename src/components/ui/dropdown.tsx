@@ -51,8 +51,9 @@ const DropdownContent = React.forwardRef<
                 sideOffset={sideOffset}
                 className={cn(
                     "z-50 min-w-44 overflow-hidden p-1",
-                    "rounded-(--r-3) border border-(--line) bg-(--bg-elev)",
-                    "shadow-(--sh-pop) text-(--ink)",
+                    "rounded-(--r-3) border border-hairline border-(--line-glass)",
+                    "glass-panel shadow-(--sh-pop) text-(--ink)",
+                    "data-[state=open]:animate-slide-down",
                     className,
                 )}
                 {...props}
@@ -71,6 +72,7 @@ const DropdownItem = React.forwardRef<
             className={cn(
                 "flex items-center gap-2 px-2 py-1.5 text-sm",
                 "rounded-(--r-2) cursor-pointer outline-none select-none",
+                "transition-colors duration-[var(--dur-fast)]",
                 "hover:bg-(--accent-soft-2) focus:bg-(--accent-soft-2)",
                 "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                 className,

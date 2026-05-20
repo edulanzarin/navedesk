@@ -81,9 +81,10 @@ const ToastViewport = React.forwardRef<
  */
 const toastVariants = cva(
     [
-        // base — empilhamento, raio, fundo elevado, sombra
+        // base — empilhamento, raio, vidro, sombra
         "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden",
-        "rounded-(--r-3) border border-(--line) bg-(--bg-elev) p-3 pr-8 shadow-(--sh-2)",
+        "rounded-(--r-3) border border-hairline border-(--line-glass)",
+        "glass-panel p-3 pr-8 shadow-(--sh-pop)",
         // animações Radix (entrada/saída + swipe)
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -97,11 +98,11 @@ const toastVariants = cva(
     {
         variants: {
             variant: {
-                default: "border-l-4 border-l-(--ink-4)",
-                info: "border-l-4 border-l-(--blue)",
-                success: "border-l-4 border-l-(--green)",
-                warn: "border-l-4 border-l-(--amber)",
-                error: "border-l-4 border-l-(--red)",
+                default: "border-l-[3px] border-l-(--ink-4)",
+                info: "border-l-[3px] border-l-(--blue)",
+                success: "border-l-[3px] border-l-(--green)",
+                warn: "border-l-[3px] border-l-(--amber)",
+                error: "border-l-[3px] border-l-(--red)",
             },
         },
         defaultVariants: {
