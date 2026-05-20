@@ -73,7 +73,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 "rounded-(--r-5) shadow-(--sh-pop)",
             ].join(" ")}
         >
-            <CardHeader className="flex-col items-start gap-3 pb-2">
+            <CardHeader className="flex-col items-center gap-3 pb-2 text-center">
                 <Image
                     src={LOGO_PATH}
                     alt=""
@@ -87,7 +87,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                         Entrar no {BRAND_NAME}
                     </CardTitle>
                     <CardDescription className="mt-1 text-[13.5px]">
-                        Central de TI da {BRAND_ORG}.
+                        Suporte de TI {BRAND_ORG}.
                     </CardDescription>
                 </div>
             </CardHeader>
