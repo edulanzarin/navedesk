@@ -145,13 +145,18 @@ class StructuredLogger {
         }
 
         // JSON estruturado pra produção.
+        const redactedCtx = redact(ctx);
+        const ctxObject =
+            redactedCtx && typeof redactedCtx === "object" && !Array.isArray(redactedCtx)
+                ? (redactedCtx as Record<string, unknown>)
+                : {};
         const record = {
             time: new Date().toISOString(),
             level,
             service: "navedesk",
             env: process.env.NODE_ENV ?? "development",
             msg,
-            ...redact(ctx),
+            ...ctxObject,
         };
         // eslint-disable-next-line no-console
         (level === "error" ? console.error : console.log)(
