@@ -11,7 +11,7 @@
  * Validates: R8.6.
  */
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
 import { attachments } from "@/db/schema";
@@ -99,17 +99,32 @@ export async function linkToTicket(
  * Vincula um anexo a uma mensagem específica do ticket.
  *
  * Usado pelo fluxo de envio de mensagem (R7) quando o autor referencia
- * anexos previamente carregados. Retorna `null` caso o anexo não exista.
+ * anexos previamente carregados. Retorna `null` se:
+ *
+ * - o anexo não existe;
+ * - foi enviado por outro usuário (`uploaderId` não bate);
+ * - já está vinculado a outro ticket ou outra mensagem.
+ *
+ * Mesma estratégia anti-corrida adotada em `linkToTicket`: a checagem
+ * vai dentro da cláusula `WHERE` para que a operação seja atômica.
  */
 export async function linkToMessage(
     db: Database,
     attachmentId: string,
     messageId: string,
+    uploaderId: string,
 ): Promise<AttachmentRow | null> {
     const rows = await db
         .update(attachments)
         .set({ messageId })
-        .where(eq(attachments.id, attachmentId))
+        .where(
+            and(
+                eq(attachments.id, attachmentId),
+                eq(attachments.uploaderId, uploaderId),
+                isNull(attachments.messageId),
+                isNull(attachments.ticketId),
+            ),
+        )
         .returning();
     return rows[0] ?? null;
 }
@@ -130,4 +145,20 @@ export async function listByTicketId(
         .select()
         .from(attachments)
         .where(eq(attachments.ticketId, ticketId));
+}
+
+/**
+ * Lista anexos vinculados a um conjunto de mensagens. Útil para
+ * resolver, em uma única query, todos os anexos da conversa de um
+ * ticket sem N+1.
+ */
+export async function listByMessageIds(
+    db: Database,
+    messageIds: readonly string[],
+): Promise<AttachmentRow[]> {
+    if (messageIds.length === 0) return [];
+    return db
+        .select()
+        .from(attachments)
+        .where(inArray(attachments.messageId, messageIds as string[]));
 }

@@ -72,6 +72,11 @@ export type UpdateTicketInput = z.infer<typeof UpdateTicketSchema>;
 export const PostMessageSchema = z.object({
     body: z.string().trim().min(1).max(5000),
     isInternal: z.boolean().default(false),
+    /**
+     * UUIDs de anexos previamente carregados via `POST /api/uploads`
+     * que serão vinculados à mensagem recém-criada.
+     */
+    attachments: z.array(z.string().uuid()).max(10).default([]),
 });
 export type PostMessageInput = z.infer<typeof PostMessageSchema>;
 

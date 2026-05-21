@@ -48,7 +48,10 @@
 import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/db/client";
-import { listByTicketId as listAttachmentsByTicket } from "@/db/repositories/attachments.repo";
+import {
+    listByMessageIds as listAttachmentsByMessages,
+    listByTicketId as listAttachmentsByTicket,
+} from "@/db/repositories/attachments.repo";
 import { listEventsForTicket } from "@/db/repositories/events.repo";
 import { findVisibleForUser } from "@/db/repositories/tickets.repo";
 import {
@@ -310,12 +313,38 @@ export default async function TicketDetailPage({
     }
 
     // Mapeia para o shape minimalista esperado pelo Client Component.
+    // Carrega anexos por message_id em uma única query (evita N+1) e
+    // agrupa por mensagem antes de montar `conversationMessages`.
+    const messageIds = messages.map((m) => m.id);
+    const messageAttachments = await listAttachmentsByMessages(db, messageIds);
+    const attByMessageId = new Map<
+        string,
+        {
+            id: string;
+            name: string;
+            size: number;
+            mime: string;
+        }[]
+    >();
+    for (const att of messageAttachments) {
+        if (!att.messageId) continue;
+        const list = attByMessageId.get(att.messageId) ?? [];
+        list.push({
+            id: att.id,
+            name: att.name,
+            size: att.sizeBytes,
+            mime: att.mime,
+        });
+        attByMessageId.set(att.messageId, list);
+    }
+
     const conversationMessages: ConversationMessage[] = messages.map((m) => ({
         id: m.id,
         body: m.body,
         isInternal: m.isInternal,
         authorId: m.authorId,
         createdAt: m.createdAt,
+        attachments: attByMessageId.get(m.id) ?? [],
     }));
 
     const canPostInternal = canPostInternalNote(user);

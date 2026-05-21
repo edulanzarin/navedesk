@@ -37,7 +37,10 @@
 
 import * as React from "react";
 
+import { Paperclip } from "lucide-react";
+
 import { postMessageAction } from "@/actions/messages";
+import { AttachmentChip } from "@/components/domain/attachment-chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +55,7 @@ import { toast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/cn";
 import { getErrorMessage } from "@/lib/error-messages";
 import { relTime } from "@/lib/format";
+import { UploadConstraints } from "@/lib/schemas";
 import type { SessionUser } from "@/types/domain";
 
 /**
@@ -70,6 +74,18 @@ export interface ConversationMessage {
     isInternal: boolean;
     authorId: string;
     createdAt: Date;
+    /** Anexos vinculados a esta mensagem específica (R7, R8). */
+    attachments?: ReadonlyArray<MessageAttachment>;
+}
+
+/**
+ * Anexo de mensagem — apenas o que a UI precisa pra montar o chip.
+ */
+export interface MessageAttachment {
+    id: string;
+    name: string;
+    size: number;
+    mime: string;
 }
 
 /**
@@ -218,6 +234,20 @@ function MessageBubble({
                 <div className="whitespace-pre-wrap break-words text-sm text-(--ink-2)">
                     {renderBodyWithMentions(message.body)}
                 </div>
+                {message.attachments && message.attachments.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        {message.attachments.map((a) => (
+                            <AttachmentChip
+                                key={a.id}
+                                id={a.id}
+                                name={a.name}
+                                size={a.size}
+                                mime={a.mime}
+                                href={`/api/uploads/${a.id}`}
+                            />
+                        ))}
+                    </div>
+                ) : null}
             </div>
         </article>
     );
@@ -235,6 +265,11 @@ export function TicketConversation({
     const [isInternal, setIsInternal] = React.useState(false);
     const [isPending, startTransition] = React.useTransition();
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+    const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+    const [uploading, setUploading] = React.useState(false);
+    const [pendingAttachments, setPendingAttachments] = React.useState<
+        MessageAttachment[]
+    >([]);
 
     /**
      * Container rolável com a thread de mensagens. Usamos `ref` em vez
@@ -255,9 +290,67 @@ export function TicketConversation({
         el.scrollTop = el.scrollHeight;
     }, [messages.length]);
 
-    /** Habilita o submit somente quando há texto e nada está em voo. */
+    /** Habilita o submit quando há texto e nada está em voo (anexos sozinhos exigem ao menos uma palavra de contexto). */
     const trimmedLength = body.trim().length;
-    const canSubmit = trimmedLength > 0 && !isPending;
+    const canSubmit = trimmedLength > 0 && !isPending && !uploading;
+
+    /**
+     * Faz upload incremental ao escolher arquivo(s). Mesma estratégia
+     * do `TicketForm`: cada arquivo dispara um POST e, ao concluir,
+     * vai pra lista local. Erros viram toast e o arquivo é descartado.
+     */
+    async function handleFiles(files: FileList | null): Promise<void> {
+        if (!files || files.length === 0) return;
+        setUploading(true);
+        try {
+            for (const file of Array.from(files)) {
+                const fd = new FormData();
+                fd.append("file", file);
+                const res = await fetch("/api/uploads", {
+                    method: "POST",
+                    body: fd,
+                });
+                if (!res.ok) {
+                    let body: { message?: string } = {};
+                    try {
+                        body = (await res.json()) as { message?: string };
+                    } catch {
+                        // Resposta sem JSON.
+                    }
+                    toast({
+                        variant: "error",
+                        title: "Falha ao enviar anexo",
+                        description: body.message ?? file.name,
+                    });
+                    continue;
+                }
+                const data = (await res.json()) as {
+                    id: string;
+                    name: string;
+                    size: number;
+                    mime: string;
+                };
+                setPendingAttachments((prev) => [
+                    ...prev,
+                    {
+                        id: data.id,
+                        name: data.name,
+                        size: data.size,
+                        mime: data.mime,
+                    },
+                ]);
+            }
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        }
+    }
+
+    function removeAttachment(id: string): void {
+        setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
+    }
 
     function handleSubmit(e: React.FormEvent<HTMLFormElement>): void {
         e.preventDefault();
@@ -276,6 +369,7 @@ export function TicketConversation({
             body: body.trim(),
             isInternal:
                 lockedInternalOnly || (canPostInternal && isInternal),
+            attachments: pendingAttachments.map((a) => a.id),
         };
 
         startTransition(async () => {
@@ -283,6 +377,7 @@ export function TicketConversation({
             if (result.ok) {
                 setBody("");
                 setIsInternal(false);
+                setPendingAttachments([]);
                 // Devolve o foco ao textarea para que o usuário possa
                 // continuar digitando sem precisar tocar no mouse —
                 // padrão usado em interfaces de chat/log.
@@ -341,26 +436,70 @@ export function TicketConversation({
                 disabled={isPending}
                 required
             />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                {showInternalOnly ? (
-                    <span className="inline-flex items-center gap-2 text-xs text-(--amber)">
-                        <Badge tone="amber">Nota interna</Badge>
-                        Apenas técnicos e admins veem esta mensagem.
-                    </span>
-                ) : canPostInternal ? (
-                    <label className="inline-flex items-center gap-2 text-sm text-(--ink-2)">
-                        <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-(--line) text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
-                            checked={effectiveIsInternal}
-                            onChange={(e) => setIsInternal(e.target.checked)}
-                            disabled={isPending}
+
+            {/* Anexos pendentes (já enviados pro servidor, aguardando o
+                submit da mensagem pra serem vinculados). */}
+            {pendingAttachments.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                    {pendingAttachments.map((a) => (
+                        <AttachmentChip
+                            key={a.id}
+                            id={a.id}
+                            name={a.name}
+                            size={a.size}
+                            mime={a.mime}
+                            onRemove={removeAttachment}
                         />
-                        Nota interna
-                    </label>
-                ) : (
-                    <span aria-hidden="true" />
-                )}
+                    ))}
+                </div>
+            ) : null}
+
+            {/* Input de arquivo escondido — disparado pelo botão Paperclip. */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={UploadConstraints.allowedMime.join(",")}
+                className="sr-only"
+                onChange={(e) => {
+                    void handleFiles(e.target.files);
+                }}
+            />
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading || isPending}
+                        className={cn(
+                            "inline-flex h-8 items-center gap-1.5 rounded-(--r-2) border border-(--line) bg-(--bg-elev) px-2.5 text-xs font-medium text-(--ink-2)",
+                            "transition-colors hover:bg-(--bg-sunk) hover:text-(--ink)",
+                            "outline-none focus-visible:ring-2 focus-visible:ring-(--accent)",
+                            "disabled:cursor-not-allowed disabled:opacity-50",
+                        )}
+                    >
+                        <Paperclip className="size-3.5" aria-hidden="true" />
+                        {uploading ? "Enviando…" : "Anexar"}
+                    </button>
+                    {showInternalOnly ? (
+                        <span className="inline-flex items-center gap-2 text-xs text-(--amber)">
+                            <Badge tone="amber">Nota interna</Badge>
+                            Apenas técnicos e admins veem esta mensagem.
+                        </span>
+                    ) : canPostInternal ? (
+                        <label className="inline-flex items-center gap-2 text-sm text-(--ink-2)">
+                            <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-(--line) text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
+                                checked={effectiveIsInternal}
+                                onChange={(e) => setIsInternal(e.target.checked)}
+                                disabled={isPending}
+                            />
+                            Nota interna
+                        </label>
+                    ) : null}
+                </div>
                 <div className="flex items-center gap-3">
                     <span
                         className="text-xs text-(--ink-4) tabular-nums"

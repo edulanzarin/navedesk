@@ -20,6 +20,7 @@
  */
 
 import { db } from "@/db/client";
+import { linkToMessage as linkAttachmentToMessage } from "@/db/repositories/attachments.repo";
 import {
     insertMessage,
     listMessagesForTicket,
@@ -36,6 +37,20 @@ import {
     notifyMessagePosted,
 } from "@/services/notifications.service";
 import type { ActionResult, SessionUser } from "@/types/domain";
+
+/**
+ * Erro interno usado para abortar a transação quando um anexo
+ * referenciado em `postMessage` não pode ser vinculado (não existe,
+ * é de outro uploader ou já está associado a outro ticket/mensagem).
+ * Capturado fora da transação e traduzido em
+ * `ActionResult.error.code = "ATTACHMENT_INVALID"`.
+ */
+class MessageAttachmentLinkError extends Error {
+    constructor(public readonly attachmentId: string) {
+        super(`attachment link failed: ${attachmentId}`);
+        this.name = "MessageAttachmentLinkError";
+    }
+}
 
 /**
  * Posta uma mensagem (pública ou nota interna) em um ticket.
@@ -124,13 +139,31 @@ export async function postMessage(
         };
     }
 
-    const row = await db.transaction(async (tx) => {
+    let row: MessageRow;
+    try {
+        row = await db.transaction(async (tx) => {
         const inserted = await insertMessage(tx, {
             ticketId: ticket.id,
             authorId: actor.id,
             body: input.body,
             isInternal: input.isInternal,
         });
+
+        // Vincula cada anexo informado à mensagem recém-criada. O
+        // helper rejeita anexos de outro uploader ou já vinculados —
+        // caso algum vínculo falhe, abortamos a transação inteira
+        // pra que mensagem e anexos vivam ou morram juntos.
+        for (const attachmentId of input.attachments) {
+            const linked = await linkAttachmentToMessage(
+                tx,
+                attachmentId,
+                inserted.id,
+                actor.id,
+            );
+            if (!linked) {
+                throw new MessageAttachmentLinkError(attachmentId);
+            }
+        }
 
         // Resolve menções `@nome` no corpo da mensagem. Carrega a
         // lista completa de usuários (escala bem pra alguns milhares)
@@ -177,6 +210,20 @@ export async function postMessage(
 
         return inserted;
     });
+    } catch (err) {
+        if (err instanceof MessageAttachmentLinkError) {
+            return {
+                ok: false,
+                error: {
+                    code: "ATTACHMENT_INVALID",
+                    message:
+                        "Um ou mais anexos não puderam ser vinculados à mensagem.",
+                    field: "attachments",
+                },
+            };
+        }
+        throw err;
+    }
 
     return { ok: true, data: row };
 }
