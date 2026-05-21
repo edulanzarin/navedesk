@@ -388,6 +388,22 @@ export default async function TicketDetailPage({
                 </div>
             </header>
 
+            {/* Descrição original — primeiro contato do solicitante.
+                Mantida em destaque, separada da conversa, para que o
+                técnico nunca precise rolar atrás do contexto inicial. */}
+            {ticket.description.trim().length > 0 ? (
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Descrição</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                        <p className="whitespace-pre-wrap break-words text-sm text-(--ink-2)">
+                            {ticket.description}
+                        </p>
+                    </CardContent>
+                </Card>
+            ) : null}
+
             {/* Layout principal — sidebar esquerda fixa (sticky em telas
                 grandes) com Detalhes + Ações; coluna direita ocupa o
                 restante com Conversa/Histórico em tabs. As duas colunas
