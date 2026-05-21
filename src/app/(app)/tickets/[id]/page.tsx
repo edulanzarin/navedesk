@@ -48,6 +48,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/db/client";
+import { listByTicketId as listAttachmentsByTicket } from "@/db/repositories/attachments.repo";
 import { listEventsForTicket } from "@/db/repositories/events.repo";
 import { findVisibleForUser } from "@/db/repositories/tickets.repo";
 import {
@@ -56,6 +57,7 @@ import {
     listAssignable,
 } from "@/db/repositories/users.repo";
 import { CategoryChip } from "@/components/domain/category-chip";
+import { AttachmentChip } from "@/components/domain/attachment-chip";
 import { PriorityPill } from "@/components/domain/priority-pill";
 import { SlaMeter } from "@/components/domain/sla-meter";
 import { StatusBadge } from "@/components/domain/status-badge";
@@ -212,21 +214,31 @@ export default async function TicketDetailPage({
     //    (o repository ignora chamadas extras, mas evitar I/O é mais
     //    barato e mais explícito sobre intent).
     const canAssignToOthers = canAssignOthers(user);
-    const [policies, categories, departments, requester, assignee, messages, events, assignableUsersRaw] =
-        await Promise.all([
-            getAllSlaPolicies(),
-            listCategories(),
-            listDepartments(),
-            findUserById(db, ticket.requesterId),
-            ticket.assigneeId
-                ? findUserById(db, ticket.assigneeId)
-                : Promise.resolve(null),
-            listMessagesForUser(user, ticket.id),
-            listEventsForTicket(db, ticket.id),
-            canAssignToOthers
-                ? listAssignable(db)
-                : Promise.resolve([] as Awaited<ReturnType<typeof listAssignable>>),
-        ]);
+    const [
+        policies,
+        categories,
+        departments,
+        requester,
+        assignee,
+        messages,
+        events,
+        assignableUsersRaw,
+        ticketAttachments,
+    ] = await Promise.all([
+        getAllSlaPolicies(),
+        listCategories(),
+        listDepartments(),
+        findUserById(db, ticket.requesterId),
+        ticket.assigneeId
+            ? findUserById(db, ticket.assigneeId)
+            : Promise.resolve(null),
+        listMessagesForUser(user, ticket.id),
+        listEventsForTicket(db, ticket.id),
+        canAssignToOthers
+            ? listAssignable(db)
+            : Promise.resolve([] as Awaited<ReturnType<typeof listAssignable>>),
+        listAttachmentsByTicket(db, ticket.id),
+    ]);
 
     const category = categories.find((c) => c.id === ticket.categoryId);
     const department = departments.find((d) => d.id === ticket.departmentId);
@@ -400,6 +412,37 @@ export default async function TicketDetailPage({
                         <p className="whitespace-pre-wrap break-words text-sm text-(--ink-2)">
                             {ticket.description}
                         </p>
+                    </CardContent>
+                </Card>
+            ) : null}
+
+            {/* Anexos da abertura — arquivos vinculados diretamente ao
+                ticket (uploads na criação). Anexos vinculados a
+                mensagens individuais aparecem dentro da própria
+                mensagem, fora deste card. */}
+            {ticketAttachments.length > 0 ? (
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base">
+                            Anexos
+                            <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-(--r-pill) bg-(--bg-sunk) px-1.5 text-[11px] font-medium tabular-nums text-(--ink-2)">
+                                {ticketAttachments.length}
+                            </span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                        <div className="flex flex-wrap gap-2">
+                            {ticketAttachments.map((a) => (
+                                <AttachmentChip
+                                    key={a.id}
+                                    id={a.id}
+                                    name={a.name}
+                                    size={a.sizeBytes}
+                                    mime={a.mime}
+                                    href={`/api/uploads/${a.id}`}
+                                />
+                            ))}
+                        </div>
                     </CardContent>
                 </Card>
             ) : null}

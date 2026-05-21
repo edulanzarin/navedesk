@@ -113,3 +113,21 @@ export async function linkToMessage(
         .returning();
     return rows[0] ?? null;
 }
+
+/**
+ * Lista todos os anexos vinculados a um ticket (incluindo os
+ * vinculados via mensagens). Ordenados por data de criação asc para
+ * acompanhar a cronologia da conversa.
+ *
+ * Usado pela página de detalhe do ticket pra exibir os arquivos
+ * anexados na criação e nas mensagens em uma seção dedicada.
+ */
+export async function listByTicketId(
+    db: Database,
+    ticketId: string,
+): Promise<AttachmentRow[]> {
+    return db
+        .select()
+        .from(attachments)
+        .where(eq(attachments.ticketId, ticketId));
+}
